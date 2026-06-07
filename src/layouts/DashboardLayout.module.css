@@ -1,0 +1,32 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #F8F9FA;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.mainContent {
+  flex-grow: 1;
+  margin-left: 260px; /* Same as sidebar width */
+  padding: clamp(20px, 3vw, 40px);
+  width: calc(100% - 260px);
+  max-width: 1440px;
+  min-width: 0;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .mainContent {
+    margin-left: 0;
+    width: 100%;
+    padding: 20px 14px 96px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mainContent {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
