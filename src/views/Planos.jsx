@@ -26,6 +26,25 @@ const loadMercadoPagoSdk = () => new Promise((resolve, reject) => {
   document.body.appendChild(script);
 });
 
+const cleanDigits = (value) => String(value || '').replace(/\D/g, '');
+
+const inferPaymentMethodId = (cardNumber) => {
+  const digits = cleanDigits(cardNumber);
+  if (/^4/.test(digits)) return 'visa';
+  if (/^3[47]/.test(digits)) return 'amex';
+  if (/^(5[1-5]|2[2-7]|5031)/.test(digits)) return 'master';
+  if (/^(4011|4312|4389|4514|4573|5041|5066|5067|509|6277|6362|6363|650|6516|6550)/.test(digits)) return 'elo';
+  return '';
+};
+
+const parseExpiration = (value) => {
+  const digits = cleanDigits(value);
+  const month = digits.slice(0, 2);
+  const rawYear = digits.slice(2, 6);
+  const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+  return { month, year };
+};
+
 const Planos = () => {
   const { api, user, setUser } = React.useContext(AuthContext);
   const [loadingCheckout, setLoadingCheckout] = React.useState(false);
@@ -39,8 +58,29 @@ const Planos = () => {
   const [cardReady, setCardReady] = React.useState(false);
   const [cardLoading, setCardLoading] = React.useState(false);
   const [cardError, setCardError] = React.useState('');
-  const cardFormRef = React.useRef(null);
+  const [cardFormKey, setCardFormKey] = React.useState(0);
+  const [cardData, setCardData] = React.useState({
+    cardholderName: '',
+    cardholderEmail: '',
+    cardNumber: '',
+    expirationDate: '',
+    securityCode: '',
+    identificationType: 'CPF',
+    identificationNumber: '',
+  });
+  const mercadoPagoRef = React.useRef(null);
   const cardSetupStartedRef = React.useRef(false);
+
+  const resetCardForm = React.useCallback(() => {
+    mercadoPagoRef.current = null;
+    cardSetupStartedRef.current = false;
+    setCardReady(false);
+    setCardFormKey((current) => current + 1);
+  }, []);
+
+  const updateCardData = (field) => (event) => {
+    setCardData((current) => ({ ...current, [field]: event.target.value }));
+  };
 
   const handleAssinarPremium = async () => {
     setLoadingCheckout(true);
@@ -110,11 +150,61 @@ const Planos = () => {
     }
   };
 
+  const handleConfirmLastPayment = async () => {
+    if (!lastPayment?.externalId) return;
+
+    setCheckingPayment(true);
+    try {
+      const paymentQuery = lastPayment.paymentId ? `?payment_id=${lastPayment.paymentId}` : '';
+      const res = await api.get(`/payments/session/${lastPayment.externalId}/confirm${paymentQuery}`);
+
+      setLastPayment((current) => current ? {
+        ...current,
+        status: res.data.status,
+        premium: res.data.premium,
+      } : current);
+
+      if (res.data.premium) {
+        setUser((current) => current ? { ...current, plano: 'premium' } : current);
+        setPixPayment(null);
+        setLastPayment(null);
+        setShowPaymentOptions(false);
+        alert('Pagamento aprovado. Seu plano Premium foi liberado.');
+      } else {
+        alert(`Pagamento ainda nao aprovado. Status: ${res.data.status}`);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Nao foi possivel confirmar o pagamento agora.');
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
   React.useEffect(() => {
     api.get('/payments/config')
-      .then((res) => setAllowTestApproval(Boolean(res.data.allowTestApproval)))
-      .catch(() => setAllowTestApproval(false));
+      .then((res) => {
+        setAllowTestApproval(Boolean(res.data.allowTestApproval));
+      })
+      .catch(() => {
+        setAllowTestApproval(false);
+      });
   }, [api]);
+
+  React.useEffect(() => {
+    setCardData((current) => ({
+      ...current,
+      cardholderName: current.cardholderName || user?.nome || '',
+      cardholderEmail: current.cardholderEmail || user?.email || '',
+    }));
+  }, [user?.email, user?.nome]);
+
+  React.useEffect(() => {
+    if (showPaymentOptions && paymentMode === 'card') return;
+
+    mercadoPagoRef.current = null;
+    cardSetupStartedRef.current = false;
+    setCardReady(false);
+  }, [paymentMode, showPaymentOptions]);
 
   React.useEffect(() => {
     if (
@@ -144,65 +234,7 @@ const Planos = () => {
         await loadMercadoPagoSdk();
         if (cancelled) return;
 
-        const mp = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
-        cardFormRef.current = mp.cardForm({
-          amount: String(configRes.data.amount || 49.9),
-          iframe: true,
-          form: {
-            id: 'card-payment-form',
-            cardholderName: { id: 'cardholderName', placeholder: 'Nome impresso no cartao' },
-            cardholderEmail: { id: 'cardholderEmail', placeholder: 'email@exemplo.com' },
-            cardNumber: { id: 'cardNumber', placeholder: 'Numero do cartao' },
-            expirationDate: { id: 'expirationDate', placeholder: 'MM/AA' },
-            securityCode: { id: 'securityCode', placeholder: 'CVV' },
-            installments: { id: 'installments', placeholder: 'Parcelas' },
-            identificationType: { id: 'identificationType', placeholder: 'Tipo de documento' },
-            identificationNumber: { id: 'identificationNumber', placeholder: 'Numero do documento' },
-            issuer: { id: 'issuer', placeholder: 'Banco emissor' },
-          },
-          callbacks: {
-            onFormMounted: (error) => {
-              if (error) setCardError('Nao foi possivel carregar o formulario de cartao.');
-            },
-            onSubmit: async (event) => {
-              event.preventDefault();
-              setCardLoading(true);
-              setCardError('');
-
-              try {
-                const data = cardFormRef.current.getCardFormData();
-                const res = await api.post('/payments/card', {
-                  token: data.token,
-                  issuerId: data.issuerId,
-                  paymentMethodId: data.paymentMethodId,
-                  installments: Number(data.installments),
-                  identificationType: data.identificationType,
-                  identificationNumber: data.identificationNumber,
-                  cardholderEmail: data.cardholderEmail,
-                });
-                setLastPayment(res.data);
-
-                if (res.data.premium) {
-                  setUser((current) => current ? { ...current, plano: 'premium' } : current);
-                  setShowPaymentOptions(false);
-                  alert('Pagamento aprovado no cartao. Seu plano Premium foi liberado.');
-                } else {
-                  const detail = res.data.statusDetail ? ` (${res.data.statusDetail})` : '';
-                  alert(`Pagamento criado. Status: ${res.data.status}${detail}`);
-                }
-              } catch (err) {
-                setCardError(err.response?.data?.error || 'Erro ao processar pagamento no cartao.');
-              } finally {
-                setCardLoading(false);
-              }
-            },
-            onFetching: () => {
-              setCardLoading(true);
-              return () => setCardLoading(false);
-            },
-          },
-        });
-
+        mercadoPagoRef.current = new window.MercadoPago(publicKey, { locale: 'pt-BR' });
         setCardReady(true);
       } catch (err) {
         setCardError(err.message || 'Erro ao carregar Mercado Pago.');
@@ -216,8 +248,75 @@ const Planos = () => {
 
     return () => {
       cancelled = true;
+      cardSetupStartedRef.current = false;
     };
-  }, [api, cardReady, paymentMode, setUser, showPaymentOptions, user?.plano]);
+  }, [api, cardReady, paymentMode, showPaymentOptions, user?.plano]);
+
+  const handleCardSubmit = async (event) => {
+    event.preventDefault();
+    setCardLoading(true);
+    setCardError('');
+
+    try {
+      const { month, year } = parseExpiration(cardData.expirationDate);
+      const paymentMethodId = inferPaymentMethodId(cardData.cardNumber);
+
+      if (!paymentMethodId) {
+        throw new Error('Bandeira do cartao nao reconhecida. Confira o numero informado.');
+      }
+
+      if (!mercadoPagoRef.current?.createCardToken) {
+        throw new Error('Mercado Pago nao carregou a tokenizacao do cartao. Atualize a pagina e tente novamente.');
+      }
+
+      const tokenResponse = await mercadoPagoRef.current.createCardToken({
+        cardNumber: cleanDigits(cardData.cardNumber),
+        cardholderName: cardData.cardholderName,
+        cardExpirationMonth: month,
+        cardExpirationYear: year,
+        securityCode: cleanDigits(cardData.securityCode),
+        identificationType: cardData.identificationType,
+        identificationNumber: cleanDigits(cardData.identificationNumber),
+      });
+      const token = tokenResponse?.id || tokenResponse?.token || tokenResponse;
+
+      if (!token || typeof token !== 'string') {
+        throw new Error('Nao foi possivel gerar o token do cartao.');
+      }
+
+      const res = await api.post('/payments/card', {
+        token,
+        paymentMethodId,
+        installments: 1,
+        identificationType: cardData.identificationType,
+        identificationNumber: cardData.identificationNumber,
+        cardholderEmail: cardData.cardholderEmail,
+      });
+      setLastPayment(res.data);
+
+      if (res.data.premium) {
+        setUser((current) => current ? { ...current, plano: 'premium' } : current);
+        setShowPaymentOptions(false);
+        alert('Pagamento aprovado no cartao. Seu plano Premium foi liberado.');
+      } else {
+        const detail = res.data.statusDetail ? ` (${res.data.statusDetail})` : '';
+        alert(`Pagamento criado. Status: ${res.data.status}${detail}`);
+      }
+    } catch (err) {
+      const apiError = err.response?.data;
+      const causes = Array.isArray(apiError?.mercadoPago?.cause)
+        ? apiError.mercadoPago.cause.join(' | ')
+        : '';
+      const invalidToken = JSON.stringify(apiError || {}).includes('Invalid card_token_id');
+      setCardError([
+        apiError?.error || err.message || 'Erro ao processar pagamento no cartao.',
+        invalidToken ? 'Token do cartao expirou ou ja foi usado. Preencha os dados novamente e tente outra vez.' : causes,
+      ].filter(Boolean).join(' - '));
+      if (invalidToken) resetCardForm();
+    } finally {
+      setCardLoading(false);
+    }
+  };
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -346,19 +445,82 @@ const Planos = () => {
           )}
 
           {paymentMode === 'card' && (
-            <form id="card-payment-form" className={styles.cardForm}>
-              <input id="cardholderName" className={styles.cardInput} type="text" />
-              <input id="cardholderEmail" className={styles.cardInput} type="email" defaultValue={user?.email || ''} />
-              <div id="cardNumber" className={styles.cardField}></div>
+            <form id="card-payment-form" className={styles.cardForm} key={cardFormKey} onSubmit={handleCardSubmit}>
+              <label className={styles.cardLabel} htmlFor="cardholderName">
+                <span>Nome impresso no cartao</span>
+                <input id="cardholderName" className={styles.cardInput} type="text" value={cardData.cardholderName} onChange={updateCardData('cardholderName')} placeholder="Nome do titular" autoComplete="cc-name" />
+              </label>
+              <label className={styles.cardLabel} htmlFor="cardholderEmail">
+                <span>Email</span>
+                <input id="cardholderEmail" className={styles.cardInput} type="email" value={cardData.cardholderEmail} onChange={updateCardData('cardholderEmail')} placeholder="email@exemplo.com" autoComplete="email" />
+              </label>
+              <label className={styles.cardLabel} htmlFor="cardNumber">
+                <span>Numero do cartao</span>
+                <input
+                  id="cardNumber"
+                  className={styles.cardInput}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                  value={cardData.cardNumber}
+                  onChange={(event) => {
+                    const digits = cleanDigits(event.target.value).slice(0, 19);
+                    setCardData((current) => ({ ...current, cardNumber: digits.replace(/(\d{4})(?=\d)/g, '$1 ') }));
+                  }}
+                  placeholder="5031 4332 1540 6351"
+                />
+              </label>
               <div className={styles.cardRow}>
-                <div id="expirationDate" className={styles.cardField}></div>
-                <div id="securityCode" className={styles.cardField}></div>
+                <label className={styles.cardLabel} htmlFor="expirationDate">
+                  <span>Validade</span>
+                  <input
+                    id="expirationDate"
+                    className={styles.cardInput}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-exp"
+                    value={cardData.expirationDate}
+                    onChange={(event) => {
+                      const digits = cleanDigits(event.target.value).slice(0, 6);
+                      const value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+                      setCardData((current) => ({ ...current, expirationDate: value }));
+                    }}
+                    placeholder="11/30"
+                  />
+                </label>
+                <label className={styles.cardLabel} htmlFor="securityCode">
+                  <span>CVV</span>
+                  <input
+                    id="securityCode"
+                    className={styles.cardInput}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-csc"
+                    value={cardData.securityCode}
+                    onChange={(event) => setCardData((current) => ({ ...current, securityCode: cleanDigits(event.target.value).slice(0, 4) }))}
+                    placeholder="123"
+                  />
+                </label>
               </div>
-              <select id="issuer" className={styles.cardInput}></select>
-              <select id="installments" className={styles.cardInput}></select>
+              <label className={styles.cardLabel} htmlFor="paymentMethod">
+                <span>Banco emissor</span>
+                <input id="paymentMethod" className={styles.cardInput} type="text" value={inferPaymentMethodId(cardData.cardNumber) || 'Informe o cartao primeiro'} readOnly />
+              </label>
+              <label className={styles.cardLabel} htmlFor="installments">
+                <span>Parcelas</span>
+                <input id="installments" className={styles.cardInput} type="text" value="1 parcela de R$ 49,90" readOnly />
+              </label>
               <div className={styles.cardRow}>
-                <select id="identificationType" className={styles.cardInput}></select>
-                <input id="identificationNumber" className={styles.cardInput} type="text" placeholder="CPF" />
+                <label className={styles.cardLabel} htmlFor="identificationType">
+                  <span>Documento</span>
+                  <select id="identificationType" className={styles.cardInput} value={cardData.identificationType} onChange={updateCardData('identificationType')}>
+                    <option value="CPF">CPF</option>
+                  </select>
+                </label>
+                <label className={styles.cardLabel} htmlFor="identificationNumber">
+                  <span>Numero do documento</span>
+                  <input id="identificationNumber" className={styles.cardInput} type="text" value={cardData.identificationNumber} onChange={(event) => setCardData((current) => ({ ...current, identificationNumber: cleanDigits(event.target.value).slice(0, 14) }))} placeholder="12345678909" inputMode="numeric" />
+                </label>
               </div>
               {cardError && <p className={styles.paymentError}>{cardError}</p>}
               <Button variant="primary" className={styles.planBtn} type="submit" disabled={cardLoading || !cardReady}>
@@ -423,18 +585,36 @@ const Planos = () => {
         </Card>
       )}
 
-      {allowTestApproval && lastPayment?.externalId && !pixPayment?.pix && user?.plano !== 'premium' && (
+      {lastPayment?.externalId && !pixPayment?.pix && user?.plano !== 'premium' && (
         <Card className={styles.testApprovalCard}>
-          <p>Modo de teste ativo para pagamentos.</p>
+          <p>
+            {lastPayment?.status
+              ? `Pagamento aguardando confirmacao. Status: ${lastPayment.status}${lastPayment.statusDetail ? ` (${lastPayment.statusDetail})` : ''}.`
+              : 'Pagamento aguardando confirmacao.'}
+          </p>
           <Button
-            variant="outline"
+            variant="primary"
             type="button"
             className={styles.testApprovalBtn}
-            onClick={handleSimulateApproval}
-            disabled={simulatingPayment}
+            onClick={handleConfirmLastPayment}
+            disabled={checkingPayment}
           >
-            {simulatingPayment ? 'Simulando...' : 'Simular aprovacao'}
+            {checkingPayment ? 'Verificando...' : 'Verificar pagamento'}
           </Button>
+          {allowTestApproval && (
+            <>
+              <p>Modo de teste ativo para pagamentos.</p>
+              <Button
+                variant="outline"
+                type="button"
+                className={styles.testApprovalBtn}
+                onClick={handleSimulateApproval}
+                disabled={simulatingPayment}
+              >
+                {simulatingPayment ? 'Simulando...' : 'Simular aprovacao'}
+              </Button>
+            </>
+          )}
         </Card>
       )}
     </DashboardLayout>

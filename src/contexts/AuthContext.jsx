@@ -5,7 +5,7 @@ import axios from 'axios';
 
 export const AuthContext = createContext();
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://placarpro-api.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
