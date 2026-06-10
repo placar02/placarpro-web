@@ -565,7 +565,7 @@ const Planos = () => {
             </Button>
           </div>
 
-          {allowTestApproval && lastPayment?.externalId && (
+          {/* {allowTestApproval && lastPayment?.externalId && (
             <Button
               variant="outline"
               type="button"
@@ -575,7 +575,7 @@ const Planos = () => {
             >
               {simulatingPayment ? 'Simulando...' : 'Simular aprovacao'}
             </Button>
-          )}
+          )} */}
 
           {pixPayment.pix.ticketUrl && (
             <a className={styles.pixLink} href={pixPayment.pix.ticketUrl} target="_blank" rel="noreferrer">
