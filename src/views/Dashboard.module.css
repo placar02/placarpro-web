@@ -346,6 +346,142 @@
   overflow: hidden;
 }
 
+.analysisDetails {
+  margin: -10px 0 18px;
+  border: 1px solid #EAEAEC;
+  border-radius: 8px;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+
+.analysisDetails summary {
+  min-height: 42px;
+  padding: 12px 14px;
+  color: var(--text-main);
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.analysisDetails[open] summary {
+  border-bottom: 1px solid #EAEAEC;
+  background: #F9FAFB;
+}
+
+.analysisDetailsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+}
+
+.analysisSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.analysisSection h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.analysisSection p {
+  color: var(--text-main);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.analysisList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-main);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.analysisFactsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.analysisFact {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #F9FAFB;
+}
+
+.analysisFact span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analysisFact strong {
+  display: block;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.playerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.playerInsight {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #EAEAEC;
+  border-radius: 8px;
+}
+
+.playerInsight strong,
+.playerInsight span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.playerInsight strong {
+  color: var(--text-main);
+  font-size: 0.86rem;
+}
+
+.playerInsight span,
+.analysisMuted {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.playerInsight p {
+  margin-top: 6px;
+  font-size: 0.8rem;
+}
+
+.riskPill {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #B91C1C;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
 .betOfDayBtn {
   width: 100%;
 }
@@ -615,6 +751,11 @@
   }
 
   .entryForm {
+    grid-template-columns: 1fr;
+  }
+
+  .analysisFactsGrid,
+  .playerGrid {
     grid-template-columns: 1fr;
   }
 }

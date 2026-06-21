@@ -52,6 +52,134 @@ const getMatchMeta = (entry) => {
   return dateText || entry.status?.description || 'Data a confirmar';
 };
 
+const asList = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
+
+const hasAdvancedAnalysis = (entry) => {
+  const analysis = entry.advancedAnalysis || {};
+  return Boolean(
+    asList(analysis.keyFactors).length ||
+    asList(analysis.confidenceDrivers).length ||
+    asList(analysis.dataSupport).length ||
+    asList(analysis.warningSigns).length ||
+    asList(analysis.avoidMarkets).length ||
+    analysis.playerAnalysis ||
+    analysis.refereeAnalysis ||
+    analysis.marketBreakdown ||
+    analysis.riskAnalysis ||
+    entry.fullRationale
+  );
+};
+
+const renderBulletList = (items) => {
+  const cleanItems = asList(items);
+  if (!cleanItems.length) return null;
+
+  return (
+    <ul className={styles.analysisList}>
+      {cleanItems.slice(0, 5).map((item, index) => (
+        <li key={`${String(item)}-${index}`}>{typeof item === 'string' ? item : item.reason || item.market || JSON.stringify(item)}</li>
+      ))}
+    </ul>
+  );
+};
+
+const renderTextMap = (data) => {
+  if (!data || typeof data !== 'object') return null;
+
+  return Object.entries(data)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0))
+    .slice(0, 6)
+    .map(([key, value]) => (
+      <div className={styles.analysisFact} key={key}>
+        <span>{key}</span>
+        <strong>{Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}</strong>
+      </div>
+    ));
+};
+
+const AnalysisDetails = ({ entry }) => {
+  if (!hasAdvancedAnalysis(entry)) return null;
+
+  const analysis = entry.advancedAnalysis || {};
+  const playerMain = asList(analysis.playerAnalysis?.mainPlayers);
+  const unsupportedPlayerMarkets = asList(analysis.playerAnalysis?.unsupportedPlayerMarkets);
+
+  return (
+    <details className={styles.analysisDetails}>
+      <summary>Ver analise completa</summary>
+      <div className={styles.analysisDetailsBody}>
+        {entry.fullRationale ? (
+          <section className={styles.analysisSection}>
+            <h4>Leitura da entrada</h4>
+            <p>{entry.fullRationale}</p>
+          </section>
+        ) : null}
+
+        {asList(analysis.keyFactors).length ? (
+          <section className={styles.analysisSection}>
+            <h4>Fatores principais</h4>
+            {renderBulletList(analysis.keyFactors)}
+          </section>
+        ) : null}
+
+        {analysis.marketBreakdown ? (
+          <section className={styles.analysisSection}>
+            <h4>Mercados</h4>
+            <div className={styles.analysisFactsGrid}>{renderTextMap(analysis.marketBreakdown)}</div>
+          </section>
+        ) : null}
+
+        {playerMain.length || unsupportedPlayerMarkets.length ? (
+          <section className={styles.analysisSection}>
+            <h4>Jogadores</h4>
+            {playerMain.length ? (
+              <div className={styles.playerGrid}>
+                {playerMain.slice(0, 4).map((player, index) => (
+                  <div className={styles.playerInsight} key={`${player.player || index}-${index}`}>
+                    <strong>{player.player || 'Jogador'}</strong>
+                    <span>{[player.team, player.role].filter(Boolean).join(' - ')}</span>
+                    <p>{player.whyRelevant || 'Relevancia indicada pela IA.'}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {unsupportedPlayerMarkets.length ? (
+              <div className={styles.analysisMuted}>
+                Evitar sem dados: {unsupportedPlayerMarkets.slice(0, 3).join(', ')}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {analysis.refereeAnalysis ? (
+          <section className={styles.analysisSection}>
+            <h4>Arbitro e cartoes</h4>
+            <div className={styles.analysisFactsGrid}>{renderTextMap(analysis.refereeAnalysis)}</div>
+          </section>
+        ) : null}
+
+        {asList(analysis.dataSupport).length || asList(analysis.warningSigns).length || analysis.riskAnalysis ? (
+          <section className={styles.analysisSection}>
+            <h4>Suporte e riscos</h4>
+            {analysis.riskLevel ? <span className={styles.riskPill}>Risco {analysis.riskLevel}</span> : null}
+            {renderBulletList(analysis.dataSupport)}
+            {renderBulletList(analysis.warningSigns)}
+            {analysis.riskAnalysis ? <p>{analysis.riskAnalysis}</p> : null}
+          </section>
+        ) : null}
+
+        {asList(analysis.confidenceDrivers).length || asList(analysis.avoidMarkets).length ? (
+          <section className={styles.analysisSection}>
+            <h4>Confianca</h4>
+            {renderBulletList(analysis.confidenceDrivers)}
+            {renderBulletList(analysis.avoidMarkets)}
+          </section>
+        ) : null}
+      </div>
+    </details>
+  );
+};
+
 const Dashboard = () => {
   const { api, setUser } = useContext(AuthContext);
   const [data, setData] = useState(null);
@@ -347,6 +475,7 @@ const Dashboard = () => {
                       <strong>Analise da IA ({entry.confidence || 0}% de confianca):</strong>
                       <p>{entry.analysisSummary || entry.rationale || 'Analise resumida indisponivel no momento.'}</p>
                     </div>
+                    <AnalysisDetails entry={entry} />
                     <form className={styles.entryForm} onSubmit={(event) => handlePlaceEntry(event, entry, index, gameName, odd)}>
                       <label className={styles.entryStakeField}>
                         <span>Valor da entrada</span>
