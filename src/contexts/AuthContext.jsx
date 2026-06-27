@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
 export const AuthContext = createContext();
@@ -11,6 +11,25 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({ system_name: 'PlacarPro', logo_url: '/placarpro-logo.png' });
+
+  const updateSettingsTheme = useCallback((data = {}) => {
+    setSettings((current) => ({ ...current, ...data }));
+    if (data.system_name) document.title = data.system_name;
+    if (data.primary_color) document.documentElement.style.setProperty('--primary-color', data.primary_color);
+    if (data.secondary_color) document.documentElement.style.setProperty('--secondary-color', data.secondary_color);
+    if (data.favicon_url) {
+      let favicon = document.querySelector("link[rel='icon']");
+      if (!favicon) { favicon = document.createElement('link'); favicon.rel = 'icon'; document.head.appendChild(favicon); }
+      favicon.href = data.favicon_url;
+    }
+  }, []);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/settings/public`).then(({ data }) => {
+      updateSettingsTheme(data);
+    }).catch(() => {});
+  }, [updateSettingsTheme]);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -75,12 +94,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    api.post('/auth/logout').catch(() => {});
     setToken(null);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, token, api, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, token, api, login, register, logout, loading, settings, updateSettingsTheme }}>
       {children}
     </AuthContext.Provider>
   );

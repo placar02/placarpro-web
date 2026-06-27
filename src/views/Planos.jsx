@@ -45,6 +45,8 @@ const parseExpiration = (value) => {
   return { month, year };
 };
 
+const formatPrice = (cents) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(cents || 0) / 100);
+
 const Planos = () => {
   const { api, user, setUser } = React.useContext(AuthContext);
   const [loadingCheckout, setLoadingCheckout] = React.useState(false);
@@ -55,6 +57,14 @@ const Planos = () => {
   const [paymentMode, setPaymentMode] = React.useState('pix');
   const [showPaymentOptions, setShowPaymentOptions] = React.useState(false);
   const [allowTestApproval, setAllowTestApproval] = React.useState(false);
+  const [paymentConfig, setPaymentConfig] = React.useState({ plans: [], paymentSettings: {} });
+  const [plansLoading, setPlansLoading] = React.useState(true);
+  const [plansError, setPlansError] = React.useState('');
+  const [selectedPlanId, setSelectedPlanId] = React.useState('');
+  const [couponCode, setCouponCode] = React.useState('');
+  const [couponPricing, setCouponPricing] = React.useState(null);
+  const [couponError, setCouponError] = React.useState('');
+  const [startingTrial, setStartingTrial] = React.useState(false);
   const [cardReady, setCardReady] = React.useState(false);
   const [cardLoading, setCardLoading] = React.useState(false);
   const [cardError, setCardError] = React.useState('');
@@ -70,6 +80,7 @@ const Planos = () => {
   });
   const mercadoPagoRef = React.useRef(null);
   const cardSetupStartedRef = React.useRef(false);
+  const selectedPlan = paymentConfig.plans.find((plan) => String(plan.id) === String(selectedPlanId)) || paymentConfig.plans[0];
 
   const resetCardForm = React.useCallback(() => {
     mercadoPagoRef.current = null;
@@ -86,7 +97,7 @@ const Planos = () => {
     setLoadingCheckout(true);
 
     try {
-      const res = await api.post('/payments/checkout');
+      const res = await api.post('/payments/checkout', { planId: selectedPlan?.id, couponCode: couponCode || undefined });
       setPixPayment(res.data);
       setLastPayment(res.data);
     } catch (err) {
@@ -184,11 +195,44 @@ const Planos = () => {
     api.get('/payments/config')
       .then((res) => {
         setAllowTestApproval(Boolean(res.data.allowTestApproval));
+        setPaymentConfig(res.data);
+        setSelectedPlanId((current) => current || String(res.data.plans?.[0]?.id || ''));
+        setPlansError('');
       })
-      .catch(() => {
+      .catch((err) => {
         setAllowTestApproval(false);
-      });
+        setPlansError(err.response?.data?.error || 'Não foi possível carregar os planos.');
+      })
+      .finally(() => setPlansLoading(false));
   }, [api]);
+
+  React.useEffect(() => {
+    setCouponPricing(null);
+    setCouponError('');
+  }, [selectedPlanId]);
+
+  const handleValidateCoupon = async () => {
+    setCouponError('');
+    try {
+      const res = await api.post('/payments/coupon/validate', { planId: selectedPlan?.id, couponCode });
+      setCouponPricing(res.data);
+    } catch (err) {
+      setCouponPricing(null);
+      setCouponError(err.response?.data?.error || 'Cupom inválido.');
+    }
+  };
+
+  const handleStartTrial = async () => {
+    setStartingTrial(true);
+    try {
+      const res = await api.post('/payments/trial', { planId: selectedPlan?.id });
+      if (res.data.premium) {
+        setUser((current) => current ? { ...current, plano: 'premium', role: current.role === 'admin' ? 'admin' : 'premium' } : current);
+        alert(`Período de teste de ${res.data.trialDays} dias ativado.`);
+      }
+    } catch (err) { alert(err.response?.data?.error || 'Não foi possível ativar o teste.'); }
+    finally { setStartingTrial(false); }
+  };
 
   React.useEffect(() => {
     setCardData((current) => ({
@@ -291,6 +335,8 @@ const Planos = () => {
         identificationType: cardData.identificationType,
         identificationNumber: cardData.identificationNumber,
         cardholderEmail: cardData.cardholderEmail,
+        planId: selectedPlan?.id,
+        couponCode: couponCode || undefined,
       });
       setLastPayment(res.data);
 
@@ -379,27 +425,23 @@ const Planos = () => {
         </Card>
 
         <Card className={`${styles.planCard} ${styles.premiumCard}`}>
-          <div className={styles.popularBadge}>Mais popular</div>
+          <div className={styles.popularBadge}>{selectedPlan?.badge || 'Premium'}</div>
           <div className={styles.planHeader}>
             <div className={styles.planIconPremium}></div>
-            <h3 className={styles.planName}>Premium</h3>
+            <h3 className={styles.planName}>{selectedPlan?.name || 'Premium'}</h3>
           </div>
           <div className={styles.planPrice}>
-            <div className={styles.pricePromo}>
-              <span>De R$ 80,00</span>
-              <strong>por</strong>
-            </div>
+            {(couponPricing?.discount > 0 || Number(selectedPlan?.checkout_price_cents) < Number(selectedPlan?.price_cents)) && <div className={styles.pricePromo}><span>De R$ {formatPrice(couponPricing ? couponPricing.originalAmount * 100 : selectedPlan?.price_cents)}</span><strong>por</strong></div>}
             <span className={styles.currency}>R$</span>
-            <span className={styles.amount}>49,90</span>
-            <span className={styles.period}>/mes</span>
+            <span className={styles.amount}>{plansLoading ? '...' : selectedPlan ? (couponPricing ? formatPrice(couponPricing.amount * 100) : formatPrice(selectedPlan.checkout_price_cents ?? selectedPlan.price_cents)) : 'Indisponível'}</span>
+            <span className={styles.period}>/{({ monthly: 'mês', quarterly: 'trimestre', yearly: 'ano', lifetime: 'vitalício' })[selectedPlan?.billing_period] || 'período'}</span>
           </div>
+          {plansError && <p className={styles.paymentError}>{plansError}</p>}
           <ul className={styles.featuresList}>
-            <li><Check size={16} className="text-primary" /> Mais analises da IA</li>
-            <li><Check size={16} className="text-primary" /> Varias entradas com odds diferentes</li>
-            <li><Check size={16} className="text-primary" /> Sinais ao vivo</li>
-            <li><Check size={16} className="text-primary" /> Gestao de banca personalizada</li>
-            <li><Check size={16} className="text-primary" /> Suporte prioritario</li>
+            {(selectedPlan?.benefits?.length ? selectedPlan.benefits : ['Mais análises da IA', 'Várias entradas com odds diferentes', 'Suporte prioritário']).map((benefit) => <li key={benefit}><Check size={16} className="text-primary" /> {benefit}</li>)}
           </ul>
+          {paymentConfig.plans.length > 1 && <label className={styles.planSelector}>Escolha o plano<select value={selectedPlanId} onChange={(event) => setSelectedPlanId(event.target.value)}>{paymentConfig.plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} — R$ {formatPrice(plan.checkout_price_cents ?? plan.price_cents)}</option>)}</select></label>}
+          {paymentConfig.paymentSettings?.trialDays > 0 && user?.plano !== 'premium' && <Button variant="outline" className={styles.planBtn} onClick={handleStartTrial} disabled={startingTrial}>{startingTrial ? 'Ativando...' : `Testar grátis por ${paymentConfig.paymentSettings.trialDays} dias`}</Button>}
           <Button
             variant="primary"
             className={styles.planBtn}
@@ -407,10 +449,11 @@ const Planos = () => {
               setShowPaymentOptions(true);
               setPaymentMode('pix');
             }}
-            disabled={user?.plano === 'premium'}
+            disabled={user?.plano === 'premium' || paymentConfig.paymentSettings?.mercadoPagoEnabled === false || paymentConfig.paymentSettings?.subscriptionStatus === 'paused'}
           >
             {user?.plano === 'premium' ? 'Premium Ativo' : 'Escolher forma de pagamento'}
           </Button>
+          {(paymentConfig.paymentSettings?.mercadoPagoEnabled === false || paymentConfig.paymentSettings?.subscriptionStatus === 'paused') && <p className={styles.paymentError}>Novas assinaturas estão temporariamente indisponíveis.</p>}
         </Card>
       </div>
 
@@ -431,6 +474,13 @@ const Planos = () => {
             >
               <CreditCard size={18} /> Cartao
             </button>
+          </div>
+
+          <div className={styles.couponBox}>
+            <label htmlFor="couponCode">Cupom de desconto</label>
+            <div><input id="couponCode" value={couponCode} onChange={(event) => { setCouponCode(event.target.value.toUpperCase()); setCouponPricing(null); }} placeholder="Digite o código" /><button type="button" onClick={handleValidateCoupon} disabled={!couponCode.trim()}>Aplicar</button></div>
+            {couponPricing?.discount > 0 && <p className={styles.couponSuccess}>Desconto de R$ {formatPrice(couponPricing.discount * 100)} aplicado. Total: R$ {formatPrice(couponPricing.amount * 100)}</p>}
+            {couponError && <p className={styles.paymentError}>{couponError}</p>}
           </div>
 
           {paymentMode === 'pix' && (
@@ -508,7 +558,7 @@ const Planos = () => {
               </label>
               <label className={styles.cardLabel} htmlFor="installments">
                 <span>Parcelas</span>
-                <input id="installments" className={styles.cardInput} type="text" value="1 parcela de R$ 49,90" readOnly />
+                <input id="installments" className={styles.cardInput} type="text" value={`1 parcela de R$ ${couponPricing ? formatPrice(couponPricing.amount * 100) : formatPrice(selectedPlan?.checkout_price_cents ?? selectedPlan?.price_cents)}`} readOnly />
               </label>
               <div className={styles.cardRow}>
                 <label className={styles.cardLabel} htmlFor="identificationType">

@@ -3,7 +3,7 @@
 import React, { useContext } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BrainCircuit, LayoutDashboard, WalletCards, User, LogOut } from 'lucide-react';
+import { BrainCircuit, LayoutDashboard, WalletCards, User, LogOut, ShieldCheck } from 'lucide-react';
 import { AuthContext } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
@@ -12,7 +12,7 @@ const navClass = (pathname, href) => pathname === href ? `${styles.navItem} ${st
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, user } = useContext(AuthContext);
+  const { logout, user, settings } = useContext(AuthContext);
 
   const handleLogout = () => {
     logout();
@@ -22,8 +22,8 @@ const Sidebar = () => {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logoContainer}>
-        <img  src="/placarpro-logo.png" alt="PlacarPro" width="70" height="70" />
-        <span className={styles.logoText}>PlacarPro</span>
+        <img src={settings?.logo_url || '/placarpro-logo.png'} alt={settings?.system_name || 'PlacarPro'} width="70" height="70" />
+        <span className={styles.logoText}>{settings?.system_name || 'PlacarPro'}</span>
       </div>
 
       <nav className={styles.nav}>
@@ -48,6 +48,13 @@ const Sidebar = () => {
           <User size={20} />
           <span>Perfil</span>
         </Link>
+
+        {user?.role === 'admin' ? (
+          <Link href="/admin" className={navClass(pathname, '/admin')}>
+            <ShieldCheck size={20} />
+            <span>Admin</span>
+          </Link>
+        ) : null}
       </nav>
 
       <div className={styles.footer}>

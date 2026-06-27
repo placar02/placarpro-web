@@ -331,6 +331,58 @@
   text-align: center;
 }
 
+.planSelector {
+  display: grid;
+  gap: 7px;
+  margin: 8px 0 14px;
+  color: #4B5563;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.planSelector select,
+.couponBox input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: #FFFFFF;
+  font: inherit;
+}
+
+.couponBox {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.couponBox label {
+  color: #4B5563;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.couponBox > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.couponBox button {
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--primary-color);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.couponSuccess {
+  color: #08783E;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 /* Responsiveness */
 @media (max-width: 768px) {
   .plansGrid {
