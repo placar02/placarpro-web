@@ -12,7 +12,7 @@ const navClass = (pathname, href) => pathname === href ? `${styles.navItem} ${st
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
 
   const handleLogout = () => {
     logout();
@@ -32,10 +32,12 @@ const Sidebar = () => {
           <span>Dashboard</span>
         </Link>
 
-        <Link href="/analises" className={navClass(pathname, '/analises')}>
-          <BrainCircuit size={20} />
-          <span>Analises</span>
-        </Link>
+        {user?.plano === 'premium' ? (
+          <Link href="/analises" className={navClass(pathname, '/analises')}>
+            <BrainCircuit size={20} />
+            <span>Analises</span>
+          </Link>
+        ) : null}
 
         <Link href="/planos" className={navClass(pathname, '/planos')}>
           <WalletCards size={20} />

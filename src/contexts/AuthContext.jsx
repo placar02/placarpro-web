@@ -13,8 +13,28 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setToken(localStorage.getItem('token'));
-    setLoading(false);
+    const restoreSession = async () => {
+      const savedToken = localStorage.getItem('token');
+      if (!savedToken) {
+        setLoading(false);
+        return;
+      }
+
+      setToken(savedToken);
+      try {
+        const res = await axios.get(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${savedToken}` },
+        });
+        setUser(res.data.user);
+      } catch (_err) {
+        localStorage.removeItem('token');
+        setToken(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
   }, []);
 
   const api = useMemo(() => {
