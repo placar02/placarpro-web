@@ -3,7 +3,7 @@
 import React, { useContext } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, WalletCards, User, LogOut } from 'lucide-react';
+import { BrainCircuit, LayoutDashboard, WalletCards, User, LogOut } from 'lucide-react';
 import { AuthContext } from '@/contexts/AuthContext';
 import styles from './Sidebar.module.css';
 
@@ -30,6 +30,11 @@ const Sidebar = () => {
         <Link href="/dashboard" className={navClass(pathname, '/dashboard')}>
           <LayoutDashboard size={20} />
           <span>Dashboard</span>
+        </Link>
+
+        <Link href="/analises" className={navClass(pathname, '/analises')}>
+          <BrainCircuit size={20} />
+          <span>Analises</span>
         </Link>
 
         <Link href="/planos" className={navClass(pathname, '/planos')}>

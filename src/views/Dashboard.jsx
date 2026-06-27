@@ -4,7 +4,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { RefreshCw, TrendingUp, DollarSign, Target, Activity, Wallet } from 'lucide-react';
+import { RefreshCw, TrendingUp, DollarSign, Target, Activity, Wallet, Clock3, Radio } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './Dashboard.module.css';
 import { AuthContext } from '../contexts/AuthContext';
@@ -83,16 +83,37 @@ const renderBulletList = (items) => {
   );
 };
 
-const renderTextMap = (data) => {
+const normalizeText = (value) => String(value || '')
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
+const isUnavailableText = (value) => {
+  const text = normalizeText(typeof value === 'object' ? JSON.stringify(value) : value);
+  return [
+    'sem dados',
+    'indisponivel',
+    'nao identificado',
+    'nao foi possivel',
+    'nao e possivel',
+    'bloqueado',
+    'premium',
+    'falta de dados',
+    'dados ausentes',
+  ].some((pattern) => text.includes(pattern));
+};
+
+const renderTextMap = (data, options = {}) => {
   if (!data || typeof data !== 'object') return null;
 
   return Object.entries(data)
     .filter(([, value]) => value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0))
+    .filter(([key]) => !asList(options.hiddenKeys).includes(normalizeText(key)))
     .slice(0, 6)
     .map(([key, value]) => (
       <div className={styles.analysisFact} key={key}>
         <span>{key}</span>
-        <strong>{Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}</strong>
+        <strong>{isUnavailableText(value) ? 'sem dados' : Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}</strong>
       </div>
     ));
 };
@@ -103,6 +124,12 @@ const AnalysisDetails = ({ entry }) => {
   const analysis = entry.advancedAnalysis || {};
   const playerMain = asList(analysis.playerAnalysis?.mainPlayers);
   const unsupportedPlayerMarkets = asList(analysis.playerAnalysis?.unsupportedPlayerMarkets);
+  const marketFacts = renderTextMap(analysis.marketBreakdown);
+  const refereeFacts = analysis.refereeAnalysis
+    ? renderTextMap(analysis.refereeAnalysis, {
+      hiddenKeys: ['available'],
+    })
+    : null;
 
   return (
     <details className={styles.analysisDetails}>
@@ -122,10 +149,10 @@ const AnalysisDetails = ({ entry }) => {
           </section>
         ) : null}
 
-        {analysis.marketBreakdown ? (
+        {marketFacts?.length ? (
           <section className={styles.analysisSection}>
             <h4>Mercados</h4>
-            <div className={styles.analysisFactsGrid}>{renderTextMap(analysis.marketBreakdown)}</div>
+            <div className={styles.analysisFactsGrid}>{marketFacts}</div>
           </section>
         ) : null}
 
@@ -151,10 +178,10 @@ const AnalysisDetails = ({ entry }) => {
           </section>
         ) : null}
 
-        {analysis.refereeAnalysis ? (
+        {refereeFacts?.length ? (
           <section className={styles.analysisSection}>
             <h4>Arbitro e cartoes</h4>
-            <div className={styles.analysisFactsGrid}>{renderTextMap(analysis.refereeAnalysis)}</div>
+            <div className={styles.analysisFactsGrid}>{refereeFacts}</div>
           </section>
         ) : null}
 
@@ -193,11 +220,12 @@ const Dashboard = () => {
   const [placingEntry, setPlacingEntry] = useState(null);
   const [resolvingBet, setResolvingBet] = useState(null);
   const [placedEntries, setPlacedEntries] = useState({});
+  const [matchMode, setMatchMode] = useState('prelive');
 
   const fetchDashboard = async ({ silent = false } = {}) => {
     if (silent) setRefreshingDashboard(true);
     try {
-      const res = await api.get('/dashboard');
+      const res = await api.get('/dashboard', { params: { matchMode } });
       setData(res.data);
       setBankrollValue(String(Number(res.data.banca_inicial || 0).toFixed(2)));
       setDashboardError('');
@@ -212,7 +240,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [matchMode]);
 
   useEffect(() => {
     setChartReady(true);
@@ -342,6 +370,33 @@ const Dashboard = () => {
       </div>
 
       {dashboardError ? <div className={styles.dashboardError}>{dashboardError}</div> : null}
+
+      <Card className={styles.matchModeCard}>
+        <div>
+          <h2 className={styles.matchModeTitle}>Tipo de jogo</h2>
+          <p className={styles.matchModeHint}>Escolha se a IA deve procurar oportunidades antes do jogo ou em partidas ao vivo.</p>
+        </div>
+        <div className={styles.matchModeControl} role="tablist" aria-label="Tipo de jogo">
+          <button
+            type="button"
+            className={`${styles.matchModeButton} ${matchMode === 'prelive' ? styles.matchModeButtonActive : ''}`}
+            onClick={() => setMatchMode('prelive')}
+            aria-pressed={matchMode === 'prelive'}
+          >
+            <Clock3 size={18} />
+            Pré-live
+          </button>
+          <button
+            type="button"
+            className={`${styles.matchModeButton} ${matchMode === 'live' ? styles.matchModeButtonActive : ''}`}
+            onClick={() => setMatchMode('live')}
+            aria-pressed={matchMode === 'live'}
+          >
+            <Radio size={18} />
+            Ao vivo
+          </button>
+        </div>
+      </Card>
 
       <Card className={styles.bankrollCard}>
         <div>

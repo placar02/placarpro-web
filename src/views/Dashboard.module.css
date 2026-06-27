@@ -29,6 +29,61 @@
   font-weight: 700;
 }
 
+.matchModeCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+  padding: 18px 24px;
+}
+
+.matchModeTitle {
+  margin: 0 0 4px;
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.matchModeHint {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.matchModeControl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  gap: 6px;
+  min-width: 272px;
+  padding: 4px;
+  border: 1px solid #EAEAEC;
+  border-radius: 8px;
+  background: #F9FAFB;
+}
+
+.matchModeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font: 800 0.86rem/1 var(--font-family);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.matchModeButtonActive {
+  background: #FFFFFF;
+  color: var(--text-main);
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.08);
+}
+
 .progressCard {
   margin-bottom: 24px;
   padding: 24px;
@@ -704,6 +759,16 @@
     flex-direction: column;
     align-items: stretch;
   }
+
+  .matchModeCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .matchModeControl {
+    min-width: 0;
+  }
+
   .bankrollForm {
     grid-template-columns: auto 1fr;
   }
