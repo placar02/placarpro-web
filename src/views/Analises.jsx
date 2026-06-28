@@ -288,6 +288,10 @@ const Analises = () => {
           params: { date, limit, daysAhead, mode: matchMode },
         });
       }
+      const responseResult = response.data?.result;
+      if (responseResult?.recommendation === 'error') {
+        throw new Error(responseResult.rationale || 'Nao foi possivel obter os dados da partida.');
+      }
       setPayload(response.data);
     } catch (requestError) {
       setError(requestError.response?.data?.error || requestError.message || 'Nao foi possivel concluir a analise.');
