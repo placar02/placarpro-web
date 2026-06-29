@@ -127,6 +127,25 @@ const TeamReading = ({ title, data }) => {
   );
 };
 
+const TeamBadge = ({ team }) => {
+  if (!team?.name) return null;
+  return (
+    <div className={styles.teamBadge}>
+      <div className={styles.teamLogo}>
+        <span>{team.name.trim().charAt(0).toUpperCase()}</span>
+        {team.imageUrl ? (
+          <img
+            src={team.imageUrl}
+            alt={`Escudo ${team.name}`}
+            onError={(event) => { event.currentTarget.style.display = 'none'; }}
+          />
+        ) : null}
+      </div>
+      <strong>{team.name}</strong>
+    </div>
+  );
+};
+
 const AnalysisCard = ({ analysis, index, featured }) => {
   const entry = getMainEntry(analysis);
   const confidence = Math.max(0, Math.min(100, Number(entry.confidence || 0)));
@@ -139,6 +158,13 @@ const AnalysisCard = ({ analysis, index, featured }) => {
           <div className={styles.resultEyebrow}>
             {featured ? <><Sparkles size={14} /> Melhor oportunidade</> : `Analise ${index + 1}`}
           </div>
+          {entry.homeTeam?.name && entry.awayTeam?.name ? (
+            <div className={styles.matchup}>
+              <TeamBadge team={entry.homeTeam} />
+              <span className={styles.versus}>x</span>
+              <TeamBadge team={entry.awayTeam} />
+            </div>
+          ) : null}
           <h2>{entry.recommendation || 'Sem entrada confiavel'}</h2>
           <div className={styles.resultMeta}>
             <span>Evento {entry.eventId || 'nao informado'}</span>
