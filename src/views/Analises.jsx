@@ -22,22 +22,15 @@ import { AuthContext } from '../contexts/AuthContext';
 import styles from './Analises.module.css';
 
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const asArray = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
 const cleanText = (value) => String(value ?? '').trim();
 
 const modeOptions = [
-  { id: 'eventos', label: 'Por ID', icon: Target },
   { id: 'equipes', label: 'Equipes', icon: Users },
   { id: 'dia', label: 'Melhores do dia', icon: CalendarDays },
   { id: 'campeonato', label: 'Campeonato', icon: Trophy },
 ];
-
-const sourceLabel = (source) => ({
-  'azure-openai': 'Azure OpenAI',
-  heuristic: 'Modelo local',
-  odds: 'Odds',
-  'odds-fallback': 'Fallback de odds',
-}[source] || source || 'IA');
 
 const humanize = (value) => String(value || '')
   .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -94,8 +87,17 @@ const InsightList = ({ title, items, tone = 'default' }) => {
 };
 
 const Facts = ({ data, limit = 10 }) => {
-  if (!data || typeof data !== 'object') return null;
-  const facts = Object.entries(data)
+  if (data === null || data === undefined || data === '') return null;
+  const normalizedData = Array.isArray(data)
+    ? {
+      resumo: data.every((item) => typeof item === 'string' && item.length <= 2)
+        ? data.join('')
+        : data,
+    }
+    : typeof data === 'object'
+      ? data
+      : { resumo: data };
+  const facts = Object.entries(normalizedData)
     .filter(([, value]) => value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && !value.length))
     .slice(0, limit);
   if (!facts.length) return null;
@@ -150,13 +152,17 @@ const AnalysisCard = ({ analysis, index, featured }) => {
   const entry = getMainEntry(analysis);
   const confidence = Math.max(0, Math.min(100, Number(entry.confidence || 0)));
   const recommendations = asArray(analysis.recommendations);
+  const decisionAudit = analysis.meta?.decisionAudit;
+  const rejected = decisionAudit?.decision === 'rejected' || confidence === 0;
 
   return (
-    <article className={`${styles.resultCard} ${featured ? styles.featuredResult : ''}`}>
+    <article className={`${styles.resultCard} ${featured && !rejected ? styles.featuredResult : ''} ${rejected ? styles.rejectedResult : ''}`}>
       <div className={styles.resultHeader}>
         <div className={styles.resultIdentity}>
           <div className={styles.resultEyebrow}>
-            {featured ? <><Sparkles size={14} /> Melhor oportunidade</> : `Analise ${index + 1}`}
+            {rejected
+              ? <><AlertTriangle size={14} /> Partida rejeitada</>
+              : featured ? <><Sparkles size={14} /> Melhor oportunidade</> : `Analise ${index + 1}`}
           </div>
           {entry.homeTeam?.name && entry.awayTeam?.name ? (
             <div className={styles.matchup}>
@@ -168,7 +174,6 @@ const AnalysisCard = ({ analysis, index, featured }) => {
           <h2>{entry.recommendation || 'Sem entrada confiavel'}</h2>
           <div className={styles.resultMeta}>
             <span>Evento {entry.eventId || 'nao informado'}</span>
-            <span>{sourceLabel(analysis.analysisSource)}</span>
             {entry.riskLevel ? <span>Risco {entry.riskLevel}</span> : null}
           </div>
         </div>
@@ -237,7 +242,20 @@ const AnalysisCard = ({ analysis, index, featured }) => {
             <InsightList title="Sinais de alerta" items={entry.warningSigns || analysis.warningSigns} tone="warning" />
             <InsightList title="Motores da confianca" items={analysis.confidenceDrivers} />
             <InsightList title="Mercados a evitar" items={analysis.avoidMarkets} tone="warning" />
+            <InsightList title="Motivos da rejeicao" items={decisionAudit?.reasons} tone="warning" />
           </div>
+
+          {decisionAudit ? (
+            <section className={styles.dataSection}>
+              <h3>Auditoria da decisao</h3>
+              <Facts data={{
+                decisao: decisionAudit.decision === 'approved' ? 'aprovada' : 'rejeitada',
+                qualidadeDosDados: `${Number(decisionAudit.dataQuality || 0)}/100`,
+                confiancaMinima: `${Number(decisionAudit.threshold || 0)}%`,
+                dadosAusentes: asArray(decisionAudit.missingData),
+              }} />
+            </section>
+          ) : null}
 
           {analysis.riskAnalysis ? (
             <section className={styles.textSection}>
@@ -270,16 +288,16 @@ const AnalysisCard = ({ analysis, index, featured }) => {
 
 const Analises = () => {
   const { api } = useContext(AuthContext);
-  const [activeMode, setActiveMode] = useState('eventos');
-  const [eventIds, setEventIds] = useState('');
+  const [activeMode, setActiveMode] = useState('equipes');
   const [home, setHome] = useState('');
   const [away, setAway] = useState('');
   const [date, setDate] = useState(today());
-  const [matchMode, setMatchMode] = useState('prelive');
+  const matchMode = 'prelive';
   const [limit, setLimit] = useState('5');
-  const [tournamentId, setTournamentId] = useState('');
+  const [tournamentName, setTournamentName] = useState('');
   const [daysAhead, setDaysAhead] = useState('2');
   const [loading, setLoading] = useState(false);
+  const [jobStatus, setJobStatus] = useState('');
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
 
@@ -290,35 +308,46 @@ const Analises = () => {
   const runAnalysis = async (event) => {
     event.preventDefault();
     setLoading(true);
+    setJobStatus('Buscando melhor entrada');
     setError('');
     setPayload(null);
 
     try {
       let response;
-      if (activeMode === 'eventos') {
-        const ids = eventIds.split(/[\s,;]+/).map((id) => id.trim()).filter(Boolean);
-        if (![1, 3].includes(ids.length) || ids.some((id) => !/^\d+$/.test(id))) {
-          throw new Error('Informe um ID ou exatamente tres IDs numericos.');
-        }
-        response = await api.get(`/analysis/events/${ids.join(',')}`);
-      } else if (activeMode === 'equipes') {
+      if (activeMode === 'equipes') {
         if (!home.trim() || !away.trim()) throw new Error('Informe os dois times.');
         response = await api.get('/analysis/by-teams', { params: { home, away, date, mode: matchMode } });
       } else if (activeMode === 'dia') {
         response = await api.get('/analysis/daily', {
-          params: { date, limit, maxCandidates: Math.max(10, Number(limit) * 3), mode: matchMode },
+          params: { date, limit, maxCandidates: Math.max(7, Number(limit) + 2), mode: matchMode },
         });
       } else {
-        if (!/^\d+$/.test(tournamentId.trim())) throw new Error('Informe o ID numerico do campeonato.');
-        response = await api.get(`/analysis/tournament/${tournamentId.trim()}`, {
-          params: { date, limit, daysAhead, mode: matchMode },
+        if (tournamentName.trim().length < 2) throw new Error('Informe o nome do campeonato.');
+        response = await api.get('/analysis/tournament', {
+          params: { name: tournamentName.trim(), date, limit, daysAhead, mode: matchMode },
         });
       }
-      const responseResult = response.data?.result;
+      let responseData = response.data;
+      if (responseData?.pending && responseData?.jobId) {
+        setPayload(responseData);
+        const deadline = Date.now() + 45 * 60 * 1000;
+        while (responseData?.pending && Date.now() < deadline) {
+          setJobStatus('Buscando melhor entrada');
+          await wait(Math.max(1000, Number(responseData.pollAfterMs || 2000)));
+          const jobResponse = await api.get(`/analysis/jobs/${responseData.jobId}`);
+          responseData = jobResponse.data;
+          setPayload(responseData);
+        }
+        if (responseData?.pending) throw new Error('A analise continua em processamento. Tente consultar novamente em alguns instantes.');
+      }
+      if (responseData?.ok === false || responseData?.status === 'failed') {
+        throw new Error(responseData.error || 'Nao foi possivel concluir a analise.');
+      }
+      const responseResult = responseData?.result;
       if (responseResult?.recommendation === 'error') {
         throw new Error(responseResult.rationale || 'Nao foi possivel obter os dados da partida.');
       }
-      setPayload(response.data);
+      setPayload(responseData);
     } catch (requestError) {
       setError(requestError.response?.data?.error || requestError.message || 'Nao foi possivel concluir a analise.');
     } finally {
@@ -330,13 +359,13 @@ const Analises = () => {
     <DashboardLayout>
       <header className={styles.pageHeader}>
         <div>
-          <div className={styles.pageEyebrow}><ShieldCheck size={16} /> OGOL + Azure OpenAI</div>
+          <div className={styles.pageEyebrow}><ShieldCheck size={16} /> Análise inteligente</div>
           <h1>Central de analises</h1>
-          <p>Investigue uma partida, compare tres jogos ou encontre as melhores oportunidades de uma rodada.</p>
+          <p>Analise equipes, campeonatos ou encontre rapidamente as melhores oportunidades do dia.</p>
         </div>
         <div className={styles.sourceStatus}>
           <span />
-          Dados esportivos do OGOL
+          Dados esportivos atualizados
         </div>
       </header>
 
@@ -361,21 +390,13 @@ const Analises = () => {
           <div className={styles.formCopy}>
             <h2>{modeOptions.find((option) => option.id === activeMode)?.label}</h2>
             <p>
-              {activeMode === 'eventos' && 'Use o numero no final da URL do jogo no OGOL. Para comparar, informe exatamente tres IDs.'}
               {activeMode === 'equipes' && 'A partida sera localizada na agenda pela data e pelos nomes informados.'}
-              {activeMode === 'dia' && 'A IA avalia os jogos com dados mais completos e ordena as entradas por confianca.'}
-              {activeMode === 'campeonato' && 'Analise os proximos jogos de uma competicao especifica.'}
+              {activeMode === 'dia' && 'Escolha a data dos jogos. O sistema compara as partidas desse dia e mostra as melhores oportunidades.'}
+              {activeMode === 'campeonato' && 'Digite o nome da competicao para analisar seus proximos jogos.'}
             </p>
           </div>
 
           <div className={styles.fields}>
-            {activeMode === 'eventos' ? (
-              <label className={styles.fieldWide}>
-                <span>ID do jogo ou tres IDs</span>
-                <input value={eventIds} onChange={(event) => setEventIds(event.target.value)} placeholder="11832328 ou 11832328, 11832329, 12043362" inputMode="numeric" />
-              </label>
-            ) : null}
-
             {activeMode === 'equipes' ? (
               <>
                 <label><span>Time mandante</span><input value={home} onChange={(event) => setHome(event.target.value)} placeholder="Turquia" /></label>
@@ -384,12 +405,10 @@ const Analises = () => {
             ) : null}
 
             {activeMode === 'campeonato' ? (
-              <label><span>ID do campeonato</span><input value={tournamentId} onChange={(event) => setTournamentId(event.target.value)} placeholder="ID numerico" inputMode="numeric" /></label>
+              <label><span>Nome do campeonato</span><input value={tournamentName} onChange={(event) => setTournamentName(event.target.value)} placeholder="Ex.: Brasileirão, Libertadores" /></label>
             ) : null}
 
-            {activeMode !== 'eventos' ? (
-              <label><span>Data inicial</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-            ) : null}
+            <label><span>{activeMode === 'dia' ? 'Data dos jogos' : 'Data da partida ou início'}</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
 
             {['dia', 'campeonato'].includes(activeMode) ? (
               <label><span>Quantidade</span><select value={limit} onChange={(event) => setLimit(event.target.value)}><option value="3">3 jogos</option><option value="5">5 jogos</option><option value="8">8 jogos</option></select></label>
@@ -399,19 +418,16 @@ const Analises = () => {
               <label><span>Buscar por</span><select value={daysAhead} onChange={(event) => setDaysAhead(event.target.value)}><option value="0">Somente no dia</option><option value="2">3 dias</option><option value="6">7 dias</option><option value="13">14 dias</option></select></label>
             ) : null}
 
-            {activeMode !== 'eventos' ? (
-              <div className={styles.modeField}>
+            <div className={styles.modeField}>
                 <span>Momento</span>
                 <div className={styles.segmented}>
-                  <button type="button" className={matchMode === 'prelive' ? styles.segmentActive : ''} onClick={() => setMatchMode('prelive')}><Clock3 size={16} /> Pre-jogo</button>
-                  <button type="button" className={matchMode === 'all' ? styles.segmentActive : ''} onClick={() => setMatchMode('all')}><Activity size={16} /> Todos</button>
+                  <span className={styles.segmentActive}><Clock3 size={16} /> Pré-jogo</span>
                 </div>
               </div>
-            ) : null}
           </div>
 
           <div className={styles.formFooter}>
-            <div><CheckCircle2 size={16} /> Sem uso de odds na decisao da IA</div>
+            <div><CheckCircle2 size={16} /> Sem uso de odds na decisão</div>
             <Button type="submit" variant="primary" disabled={loading}>
               {loading ? <Activity className={styles.spinner} size={18} /> : <Search size={18} />}
               {loading ? 'Analisando dados...' : 'Executar analise'}
@@ -423,17 +439,17 @@ const Analises = () => {
       {loading ? (
         <section className={styles.loadingState} aria-live="polite">
           <BrainCircuit size={28} />
-          <div><strong>A IA esta cruzando os dados da partida</strong><span>O OGOL pode levar alguns instantes para responder.</span></div>
+          <div><strong>{jobStatus || 'Buscando melhor entrada'}</strong><span>Analisando os jogos disponíveis. Isso pode levar alguns instantes.</span></div>
         </section>
       ) : null}
 
       {error ? <div className={styles.errorState}><AlertTriangle size={20} /><span>{error}</span></div> : null}
 
-      {payload && !loading ? (
+      {payload && !payload.pending ? (
         <section className={styles.resultsSection}>
           <div className={styles.resultsHeading}>
             <div>
-              <span>Resultado</span>
+              <span>{payload?.pending ? 'Prévia rápida' : 'Resultado'}</span>
               <h2>{entries.length} {entries.length === 1 ? 'partida analisada' : 'partidas analisadas'}</h2>
             </div>
             {result?.date || result?.datesChecked?.length ? (

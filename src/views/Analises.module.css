@@ -155,7 +155,7 @@
 
 .segmented {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 4px;
   height: 44px;
   padding: 3px;
@@ -164,7 +164,8 @@
   background: #f6f8f7;
 }
 
-.segmented button {
+.segmented button,
+.segmented > span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -272,6 +273,8 @@
 }
 
 .featuredResult { border-top: 3px solid #12a55e; }
+.rejectedResult { border-top: 3px solid #b54747; }
+.rejectedResult .resultEyebrow { color: #a33b3b; }
 
 .resultHeader {
   display: flex;
