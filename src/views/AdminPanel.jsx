@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Trash2, Lock, Unlock, KeyRound, X, RefreshCw, Eye
 import { AuthContext } from '@/contexts/AuthContext';
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminSettings from '@/components/admin/AdminSettings';
+import { LoadingState } from '@/components/ui';
 import styles from './AdminPanel.module.css';
 
 const money = (cents) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(cents || 0) / 100);
@@ -95,7 +96,7 @@ export default function AdminPanel() {
 
   return <AdminLayout section={section} onSection={changeSection}><Toast toast={toast} close={() => setToast(null)} />
     <div className={styles.heading}><div><h1>{section === 'dashboard' ? 'Dashboard Admin' : section === 'audit-logs' ? 'Logs de auditoria' : { users:'Gerenciamento de usuários',plans:'Gerenciamento de planos',payments:'Pagamentos',settings:'Configurações gerais' }[section]}</h1><p>Controle central do PlacarPro</p></div><button className={styles.refresh} onClick={load}><RefreshCw size={17}/>Atualizar</button></div>
-    {loading ? <div className={styles.loading}><RefreshCw className={styles.spin}/>Carregando...</div> : <>
+    {loading ? <LoadingState title="Carregando painel administrativo" description="Organizando metricas, registros e configuracoes do sistema." /> : <>
       {section === 'dashboard' && <Dashboard data={payload} primaryColor={settings?.primary_color}/>} 
       {section === 'users' && <><div className={styles.dateFilters}><label>Cadastro de<input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/></label><label>Cadastro até<input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}/></label></div><UsersSection rows={rows} meta={payload?.pagination} {...{search,setSearch,role,setRole,status,setStatus,setPage,openEditor,updateUser,deleteUser,passwordUser}} /></>}
       {section === 'plans' && <ResourceSection type={section} rows={rows} meta={payload?.pagination} search={search} setSearch={setSearch} setPage={setPage} openEditor={openEditor} remove={removeResource}/>} 

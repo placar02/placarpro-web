@@ -33,7 +33,7 @@ const Login = () => {
         <Card className={styles.registerCard}>
           <h1 className={styles.title}>Bem-vindo de volta</h1>
           
-          {error && <div style={{color: 'red', marginBottom: '16px'}}>{error}</div>}
+          {error && <div className={styles.error}>{error}</div>}
           <form className={styles.form} onSubmit={handleLogin}>
             <div className={styles.inputGroup}>
               <label htmlFor="email">Email</label>

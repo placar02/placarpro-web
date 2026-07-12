@@ -3,6 +3,7 @@
 import React, { useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthContext } from '@/contexts/AuthContext';
+import { LoadingState } from '@/components/ui';
 
 const ProtectedRoute = ({ children }) => {
   const { token, loading } = useContext(AuthContext);
@@ -12,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
     if (!loading && !token) router.replace('/login');
   }, [loading, router, token]);
 
-  if (loading || !token) return <div style={{ padding: '40px' }}>Carregando...</div>;
+  if (loading || !token) return <LoadingState title="Validando acesso" description="Estamos conferindo sua sessao antes de abrir a plataforma." />;
 
   return children;
 };

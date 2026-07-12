@@ -1,7 +1,10 @@
 .layout {
   display: flex;
   min-height: 100vh;
-  background-color: #F8F9FA;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(0, 230, 118, 0.14), transparent 28%),
+    radial-gradient(circle at 84% 8%, rgba(51, 92, 255, 0.1), transparent 30%),
+    var(--bg-gradient);
   width: 100%;
   overflow-x: hidden;
 }
@@ -9,10 +12,47 @@
 .mainContent {
   flex-grow: 1;
   margin-left: 260px; /* Same as sidebar width */
-  padding: clamp(20px, 3vw, 40px);
+  padding: clamp(18px, 3vw, 32px);
   width: calc(100% - 260px);
-  max-width: 1440px;
+  max-width: 1500px;
   min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.searchBox,
+.iconButton {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px);
+}
+
+.searchBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 14px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.iconButton {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: var(--text-main);
+  cursor: pointer;
 }
 
 /* Responsiveness */
@@ -21,6 +61,10 @@
     margin-left: 0;
     width: 100%;
     padding: 20px 14px 96px;
+  }
+
+  .topbar {
+    margin-bottom: 18px;
   }
 }
 

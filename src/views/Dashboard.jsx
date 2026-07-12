@@ -4,7 +4,8 @@ import React, { useEffect, useState, useContext } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { RefreshCw, TrendingUp, DollarSign, Target, Activity, Wallet, Clock3, Radio } from 'lucide-react';
+import { LoadingState, PageHeader, Progress, StatCard } from '../components/ui';
+import { TrendingUp, DollarSign, Target, Activity, Wallet } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './Dashboard.module.css';
 import { AuthContext } from '../contexts/AuthContext';
@@ -212,7 +213,6 @@ const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chartReady, setChartReady] = useState(false);
-  const [refreshingDashboard, setRefreshingDashboard] = useState(false);
   const [dashboardError, setDashboardError] = useState('');
   const [bankrollValue, setBankrollValue] = useState('');
   const [savingBankroll, setSavingBankroll] = useState(false);
@@ -220,10 +220,9 @@ const Dashboard = () => {
   const [placingEntry, setPlacingEntry] = useState(null);
   const [resolvingBet, setResolvingBet] = useState(null);
   const [placedEntries, setPlacedEntries] = useState({});
-  const [matchMode, setMatchMode] = useState('prelive');
+  const matchMode = 'prelive';
 
-  const fetchDashboard = async ({ silent = false } = {}) => {
-    if (silent) setRefreshingDashboard(true);
+  const fetchDashboard = async () => {
     try {
       const res = await api.get('/dashboard', { params: { matchMode } });
       setData(res.data);
@@ -234,7 +233,6 @@ const Dashboard = () => {
       setDashboardError(err.response?.data?.error || 'Erro ao carregar dashboard');
     } finally {
       setLoading(false);
-      setRefreshingDashboard(false);
     }
   };
 
@@ -349,7 +347,7 @@ const Dashboard = () => {
   };
 
   if (loading || !data) {
-    return <DashboardLayout><div style={{ padding: '40px' }}>Carregando...</div></DashboardLayout>;
+    return <DashboardLayout><LoadingState title="Montando seu dashboard" description="Buscando banca, entradas e historico para compor sua visao." /></DashboardLayout>;
   }
 
   const monthlyGoal = data.banca_inicial > 0 ? data.banca_inicial * 1.25 : 0;
@@ -359,44 +357,12 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Dashboard</h1>
-          <p className={styles.subtitle}>Acompanhe o crescimento da sua banca</p>
-        </div>
-        <Button variant="primary" onClick={() => fetchDashboard({ silent: true })} disabled={refreshingDashboard}>
-          <RefreshCw size={18} /> {refreshingDashboard ? 'Atualizando...' : 'Atualizar entradas'}
-        </Button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Acompanhe banca, entradas, assertividade e oportunidades em um unico painel."
+      />
 
       {dashboardError ? <div className={styles.dashboardError}>{dashboardError}</div> : null}
-
-      <Card className={styles.matchModeCard}>
-        <div>
-          <h2 className={styles.matchModeTitle}>Tipo de jogo</h2>
-          <p className={styles.matchModeHint}>Escolha se a IA deve procurar oportunidades antes do jogo ou em partidas ao vivo.</p>
-        </div>
-        <div className={styles.matchModeControl} role="tablist" aria-label="Tipo de jogo">
-          <button
-            type="button"
-            className={`${styles.matchModeButton} ${matchMode === 'prelive' ? styles.matchModeButtonActive : ''}`}
-            onClick={() => setMatchMode('prelive')}
-            aria-pressed={matchMode === 'prelive'}
-          >
-            <Clock3 size={18} />
-            Pré-live
-          </button>
-          <button
-            type="button"
-            className={`${styles.matchModeButton} ${matchMode === 'live' ? styles.matchModeButtonActive : ''}`}
-            onClick={() => setMatchMode('live')}
-            aria-pressed={matchMode === 'live'}
-          >
-            <Radio size={18} />
-            Ao vivo
-          </button>
-        </div>
-      </Card>
 
       <Card className={styles.bankrollCard}>
         <div>
@@ -424,47 +390,14 @@ const Dashboard = () => {
           <span className={styles.progressLabel}>Progresso da meta mensal</span>
           <span className={styles.progressValue}>{progress}%</span>
         </div>
-        <div className={styles.progressBarBg}>
-          <div className={styles.progressBarFill} style={{ width: `${progress}%` }}></div>
-        </div>
+        <Progress value={progress} />
       </Card>
 
       <div className={styles.statsGrid}>
-        <Card className={styles.statCard}>
-          <div className={styles.statHeader}>
-            <span className={styles.statTitle}>Saldo Total</span>
-            <DollarSign size={20} className="text-primary" />
-          </div>
-          <div className={styles.statValue}>{currency(data.saldo)}</div>
-          <div className={styles.statTrend}>Banca atual</div>
-        </Card>
-
-        <Card className={styles.statCard}>
-          <div className={styles.statHeader}>
-            <span className={styles.statTitle}>Lucro Total</span>
-            <TrendingUp size={20} className="text-primary" />
-          </div>
-          <div className={styles.statValue}>{data.lucro >= 0 ? '+' : '-'} {currency(Math.abs(data.lucro))}</div>
-          <div className={styles.statTrend}>Banca inicial: {currency(data.banca_inicial)}</div>
-        </Card>
-
-        <Card className={styles.statCard}>
-          <div className={styles.statHeader}>
-            <span className={styles.statTitle}>Assertividade</span>
-            <Target size={20} className="text-primary" />
-          </div>
-          <div className={styles.statValue}>{data.assertividade}%</div>
-          <div className={styles.statTrend}>Media da IA</div>
-        </Card>
-
-        <Card className={styles.statCard}>
-          <div className={styles.statHeader}>
-            <span className={styles.statTitle}>Stake Sugerida</span>
-            <Activity size={20} className="text-primary" />
-          </div>
-          <div className={styles.statValue}>{currency(data.stake_sugerida)}</div>
-          <div className={styles.statTrend}>2% da banca atual</div>
-        </Card>
+        <StatCard label="Saldo Total" value={currency(data.saldo)} hint="Banca atual" icon={<DollarSign size={20} />} />
+        <StatCard label="Lucro Total" value={`${data.lucro >= 0 ? '+' : '-'} ${currency(Math.abs(data.lucro))}`} hint={`Banca inicial: ${currency(data.banca_inicial)}`} icon={<TrendingUp size={20} />} />
+        <StatCard label="Assertividade" value={`${data.assertividade}%`} hint="Media da IA" icon={<Target size={20} />} />
+        <StatCard label="Stake Sugerida" value={currency(data.stake_sugerida)} hint="2% da banca atual" icon={<Activity size={20} />} />
       </div>
 
       <div className={styles.middleSection}>

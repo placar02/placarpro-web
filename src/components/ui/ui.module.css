@@ -1,0 +1,201 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.74);
+  color: #26312c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+}
+
+.success { color: #08783f; background: rgba(0, 230, 118, 0.12); border-color: rgba(0, 184, 98, 0.26); }
+.warning { color: #8A6100; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.24); }
+.danger { color: #B91C1C; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.24); }
+.info { color: #2444BF; background: rgba(51, 92, 255, 0.1); border-color: rgba(51, 92, 255, 0.2); }
+.dark { color: #fff; background: #071018; border-color: rgba(255, 255, 255, 0.1); }
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.pageHeader h1 {
+  margin: 12px 0 8px;
+  color: var(--text-main);
+  font-size: clamp(1.85rem, 4vw, 2.65rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.pageHeader p {
+  max-width: 680px;
+  color: var(--text-muted);
+  font-size: 0.98rem;
+  line-height: 1.7;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.statCard {
+  position: relative;
+  min-height: 130px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.statCard::after {
+  position: absolute;
+  inset: auto -36px -42px auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(0, 230, 118, 0.16), transparent 68%);
+  content: '';
+}
+
+.statTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.statIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.18), rgba(51, 92, 255, 0.12));
+}
+
+.statValue {
+  margin-top: 16px;
+  color: var(--text-main);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.statHint {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.empty,
+.loading {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.emptyIcon,
+.loadingIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.16), rgba(51, 92, 255, 0.1));
+  color: var(--primary-strong);
+}
+
+.empty h3,
+.loading strong {
+  display: block;
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.empty p,
+.loading span {
+  display: block;
+  max-width: 420px;
+  margin-top: 7px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.skeletonStack {
+  display: grid;
+  width: min(520px, 100%);
+  gap: 12px;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #e8edf0;
+}
+
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.72), transparent);
+  animation: shimmer 1.35s infinite;
+  content: '';
+}
+
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #E8EDF0;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00E676, #335CFF);
+  transition: width 0.8s ease;
+}
+
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (max-width: 720px) {
+  .pageHeader {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}

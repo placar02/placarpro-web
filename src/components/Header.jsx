@@ -16,14 +16,14 @@ const Header = () => {
 
         <nav className={styles.nav}>
           <a href="/#como-funciona" className={styles.navLink}>Como funciona</a>
-          <a href="/#resultados" className={styles.navLink}>Resultados</a>
-          <a href="/planos" className={styles.navLink}>Planos</a>
+          <a href="/#recursos" className={styles.navLink}>Recursos</a>
+          <a href="/#tecnologia" className={styles.navLink}>Tecnologia</a>
         </nav>
 
         <div className={styles.actions}>
           <Link href="/login" className={styles.loginLink}>Entrar</Link>
           <Link href="/cadastro">
-            <Button variant="primary">Comecar agora</Button>
+            <Button variant="primary">Comecar</Button>
           </Link>
         </div>
       </div>

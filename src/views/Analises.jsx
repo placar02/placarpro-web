@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useContext, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   Activity,
   AlertTriangle,
+  ArrowRight,
   BrainCircuit,
   CalendarDays,
   CheckCircle2,
@@ -25,12 +27,65 @@ const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const asArray = (value) => Array.isArray(value) ? value.filter(Boolean) : [];
 const cleanText = (value) => String(value ?? '').trim();
+const jobMessage = (payload) => {
+  if (payload?.statusMessage) return payload.statusMessage;
+  if (payload?.status === 'queued') return 'Na fila de analise';
+  if (payload?.status === 'processing') return 'Cruzando dados da partida';
+  return 'Buscando melhor entrada';
+};
 
 const modeOptions = [
   { id: 'equipes', label: 'Equipes', icon: Users },
   { id: 'dia', label: 'Melhores do dia', icon: CalendarDays },
   { id: 'campeonato', label: 'Campeonato', icon: Trophy },
 ];
+
+const Paywall = ({ user }) => (
+  <DashboardLayout>
+    <section className={styles.paywall}>
+      <div className={styles.paywallBackdrop} />
+      <div className={styles.paywallContent}>
+        <div className={styles.paywallBadge}><ShieldCheck size={16} /> Recurso premium</div>
+        <h1>Analises avancadas liberadas para assinantes.</h1>
+        <p>
+          A Central de Analises cruza forma recente, contexto da partida, mercado, risco e sinais de confianca da IA.
+          Para manter esse processamento com qualidade e dados atualizados, este modulo faz parte dos planos premium.
+        </p>
+
+        <div className={styles.paywallGrid}>
+          <div>
+            <BrainCircuit size={20} />
+            <strong>Leitura explicavel da IA</strong>
+            <span>Resumo dos fatores que sustentam ou rejeitam uma entrada.</span>
+          </div>
+          <div>
+            <Target size={20} />
+            <strong>Mercados e confianca</strong>
+            <span>Classificacao por oportunidade, risco e consistencia dos dados.</span>
+          </div>
+          <div>
+            <Sparkles size={20} />
+            <strong>Melhores jogos do dia</strong>
+            <span>Triagem automatizada para encontrar partidas com melhor contexto.</span>
+          </div>
+        </div>
+
+        <div className={styles.paywallActions}>
+          <Link href="/planos">
+            <Button variant="primary">Assinar um plano <ArrowRight size={18} /></Button>
+          </Link>
+          <Link href="/dashboard">
+            <Button variant="outline">Voltar ao dashboard</Button>
+          </Link>
+        </div>
+
+        <span className={styles.paywallNote}>
+          Plano atual: {user?.plano === 'premium' ? 'Premium' : 'Basico'}
+        </span>
+      </div>
+    </section>
+  </DashboardLayout>
+);
 
 const humanize = (value) => String(value || '')
   .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -287,7 +342,7 @@ const AnalysisCard = ({ analysis, index, featured }) => {
 };
 
 const Analises = () => {
-  const { api } = useContext(AuthContext);
+  const { api, user } = useContext(AuthContext);
   const [activeMode, setActiveMode] = useState('equipes');
   const [home, setHome] = useState('');
   const [away, setAway] = useState('');
@@ -304,6 +359,10 @@ const Analises = () => {
   const entries = useMemo(() => getEntries(payload), [payload]);
   const result = payload?.result || payload;
   const bestEventId = String(result?.bestEventId || result?.bestEntry?.eventId || entries[0]?.eventId || '');
+
+  if (user?.plano !== 'premium') {
+    return <Paywall user={user} />;
+  }
 
   const runAnalysis = async (event) => {
     event.preventDefault();
@@ -330,12 +389,14 @@ const Analises = () => {
       let responseData = response.data;
       if (responseData?.pending && responseData?.jobId) {
         setPayload(responseData);
+        setJobStatus(jobMessage(responseData));
         const deadline = Date.now() + 45 * 60 * 1000;
         while (responseData?.pending && Date.now() < deadline) {
-          setJobStatus('Buscando melhor entrada');
+          setJobStatus(jobMessage(responseData));
           await wait(Math.max(1000, Number(responseData.pollAfterMs || 2000)));
           const jobResponse = await api.get(`/analysis/jobs/${responseData.jobId}`);
           responseData = jobResponse.data;
+          setJobStatus(jobMessage(responseData));
           setPayload(responseData);
         }
         if (responseData?.pending) throw new Error('A analise continua em processamento. Tente consultar novamente em alguns instantes.');

@@ -1,18 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --primary-color: #00E676; /* Neon green */
-  --secondary-color: #1A1A1A;
+  --primary-color: #00E676;
+  --primary-strong: #00B862;
+  --primary-soft: rgba(0, 230, 118, 0.12);
+  --secondary-color: #071018;
+  --accent-blue: #335CFF;
   --primary-hover: #00C853;
-  --bg-color: #FFFFFF;
-  --text-main: #000000;
-  --text-muted: #666666;
-  --card-bg: #FFFFFF;
-  --border-color: #EAEAEC;
+  --bg-color: #F6F8FB;
+  --bg-gradient: linear-gradient(180deg, #f8faf8 0%, #ffffff 18%, #f6f8fb 100%);
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-strong: #FFFFFF;
+  --surface-muted: #F8FAF8;
+  --text-main: #071018;
+  --text-muted: #62706A;
+  --text-soft: #8A9690;
+  --card-bg: rgba(255, 255, 255, 0.84);
+  --border-color: rgba(7, 10, 18, 0.08);
+  --border-strong: rgba(7, 10, 18, 0.12);
+  --success: #00B862;
+  --warning: #D18B00;
+  --danger: #EF4444;
+  --info: #335CFF;
   --font-family: 'Inter', sans-serif;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
-  --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
-  --shadow-lg: 0 16px 32px rgba(0,230,118,0.2);
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --shadow-sm: 0 10px 30px rgba(12, 18, 30, 0.05);
+  --shadow-md: 0 18px 52px rgba(17, 24, 39, 0.06);
+  --shadow-lg: 0 28px 80px rgba(17, 24, 39, 0.15);
+  --shadow-glow: 0 24px 70px rgba(0, 184, 98, 0.14);
+  --transition: 180ms ease;
 }
 
 * {
@@ -23,13 +42,18 @@
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-color);
+  background: var(--bg-gradient);
   color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   -webkit-user-select: none;
   user-select: none;
+}
+
+::selection {
+  background: rgba(0, 230, 118, 0.25);
+  color: var(--text-main);
 }
 
 input,
@@ -148,8 +172,26 @@ canvas {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   min-width: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(0, 230, 118, 0.24);
+  outline-offset: 2px;
 }
 
 @media (max-width: 420px) {

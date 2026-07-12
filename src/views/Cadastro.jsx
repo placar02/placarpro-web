@@ -35,7 +35,7 @@ const Cadastro = () => {
         <Card className={styles.registerCard}>
           <h1 className={styles.title}>Crie uma conta</h1>
 
-          {error && <div style={{ color: 'red', marginBottom: '16px' }}>{error}</div>}
+          {error && <div className={styles.error}>{error}</div>}
           <form className={styles.form} onSubmit={handleRegister}>
             <div className={styles.inputGroup}>
               <label htmlFor="nome">Nome Completo</label>

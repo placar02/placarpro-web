@@ -10,7 +10,10 @@
   align-items: center;
   justify-content: center;
   padding: clamp(28px, 7vw, 40px) 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(0,230,118,0.2) 50%, rgba(0,230,118,0.8) 100%);
+  background:
+    radial-gradient(circle at 20% 12%, rgba(0, 230, 118, 0.2), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(51, 92, 255, 0.12), transparent 32%),
+    var(--bg-gradient);
 }
 
 .registerCard {
@@ -18,8 +21,8 @@
   max-width: 480px;
   padding: clamp(24px, 6vw, 40px);
   text-align: center;
-  background-color: white;
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: var(--radius-lg);
 }
 
 .title {
@@ -27,6 +30,17 @@
   font-weight: 700;
   margin-bottom: 32px;
   color: var(--text-main);
+}
+
+.error {
+  margin-bottom: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #B91C1C;
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .form {
@@ -54,7 +68,7 @@
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
-  background-color: #F9FAFB;
+  background-color: var(--surface-muted);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   min-width: 0;
   width: 100%;
@@ -118,7 +132,7 @@
   }
 
   .registerCard {
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
   }
 
   .submitBtn {

@@ -32,12 +32,11 @@ const Sidebar = () => {
           <span>Dashboard</span>
         </Link>
 
-        {user?.plano === 'premium' ? (
-          <Link href="/analises" className={navClass(pathname, '/analises')}>
-            <BrainCircuit size={20} />
-            <span>Analises</span>
-          </Link>
-        ) : null}
+        <Link href="/analises" className={navClass(pathname, '/analises')}>
+          <BrainCircuit size={20} />
+          <span>Analises</span>
+          {user?.plano !== 'premium' ? <small className={styles.premiumHint}>Premium</small> : null}
+        </Link>
 
         <Link href="/planos" className={navClass(pathname, '/planos')}>
           <WalletCards size={20} />
