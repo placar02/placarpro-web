@@ -241,6 +241,12 @@ const Dashboard = () => {
   }, [matchMode]);
 
   useEffect(() => {
+    if (!data?.aposta_do_dia_atualizando) return undefined;
+    const timer = setTimeout(fetchDashboard, 15000);
+    return () => clearTimeout(timer);
+  }, [data?.aposta_do_dia_atualizando, data?.aposta_do_dia_atualizada_em]);
+
+  useEffect(() => {
     setChartReady(true);
   }, []);
 

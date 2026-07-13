@@ -28,10 +28,10 @@ const Hero = () => {
         >
           <div className={styles.eyebrow}>
             <Sparkles size={15} />
-            Plataforma de inteligencia esportiva
+            Plataforma de inteligencia esportiva 
           </div>
           <h1 className={styles.heroTitle}>
-            Inteligencia artificial aplicada a analise esportiva.
+           Aposte com Inteligência, Não com Sorte
           </h1>
           <p className={styles.heroSubtitle}>
             O PlacarPro transforma dados de partidas, campeonatos e historico recente em leituras objetivas para apoiar decisoes com mais contexto.

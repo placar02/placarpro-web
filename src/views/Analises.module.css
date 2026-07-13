@@ -506,6 +506,7 @@
 .rationale > svg { flex: 0 0 auto; margin-top: 2px; color: #0c8d4d; }
 .rationale strong { font-size: 0.8rem; }
 .rationale p { margin-top: 4px; color: #424a45; font-size: 0.86rem; line-height: 1.6; }
+.aiWarning { display: block; margin-top: 8px; color: #9a6a00; font-size: 0.76rem; line-height: 1.45; }
 
 .details { border-top: 1px solid #e6e9e7; }
 .details summary {

@@ -10,21 +10,32 @@ import styles from './Cadastro.module.css'; // Reutilizando os mesmos estilos do
 import { AuthContext } from '../contexts/AuthContext';
 
 const Login = () => {
-  const { login } = React.useContext(AuthContext);
+  const { login, user, loading } = React.useContext(AuthContext);
   const router = useRouter();
   const [email, setEmail] = React.useState('');
   const [senha, setSenha] = React.useState('');
   const [error, setError] = React.useState('');
 
+  React.useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [loading, user, router]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       await login(email, senha);
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao fazer login');
     }
   };
+
+  if (loading || user) {
+    return null;
+  }
+
   return (
     <div className={styles.page}>
       <Header />

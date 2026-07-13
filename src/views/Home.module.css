@@ -35,13 +35,15 @@
 .heroGrid {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.92fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: clamp(36px, 6vw, 76px);
+  gap: clamp(36px, 5vw, 58px);
 }
 
 .heroCopy {
-  max-width: 690px;
+  max-width: 920px;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .eyebrow,
@@ -74,6 +76,8 @@
 
 .heroSubtitle {
   max-width: 620px;
+  margin-right: auto;
+  margin-left: auto;
   color: #59656f;
   font-size: clamp(1rem, 1.65vw, 1.22rem);
   line-height: 1.72;
@@ -83,6 +87,7 @@
 .ctaActions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 14px;
   margin-top: 32px;
   flex-wrap: wrap;
@@ -90,6 +95,7 @@
 
 .trustStrip {
   display: flex;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 30px;
@@ -111,7 +117,9 @@
 
 .heroVisual {
   position: relative;
-  min-height: 520px;
+  min-height: 640px;
+  width: min(980px, 100%);
+  margin: 0 auto;
 }
 
 .heroPhotoFrame {

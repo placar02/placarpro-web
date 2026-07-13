@@ -119,6 +119,11 @@ const getMainEntry = (analysis) => ({
   eventId: analysis?.bestEntry?.eventId || analysis?.eventId,
 });
 
+const compactAiError = (value) => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  return text.length > 180 ? `${text.slice(0, 177)}...` : text;
+};
+
 const confidenceTone = (confidence) => {
   if (confidence >= 75) return styles.confidenceHigh;
   if (confidence >= 55) return styles.confidenceMedium;
@@ -249,6 +254,9 @@ const AnalysisCard = ({ analysis, index, featured }) => {
         <div>
           <strong>Leitura da IA</strong>
           <p>{entry.rationale || analysis.matchAnalysis || 'A IA nao encontrou sustentacao suficiente nos dados disponiveis.'}</p>
+          {analysis.meta?.llmError ? (
+            <small className={styles.aiWarning}>IA indisponivel nesta consulta: {compactAiError(analysis.meta.llmError)}</small>
+          ) : null}
         </div>
       </div>
 
@@ -375,7 +383,18 @@ const Analises = () => {
       let response;
       if (activeMode === 'equipes') {
         if (!home.trim() || !away.trim()) throw new Error('Informe os dois times.');
-        response = await api.get('/analysis/by-teams', { params: { home, away, date, mode: matchMode } });
+        response = await api.get('/analysis/by-teams', {
+          params: {
+            home,
+            away,
+            date,
+            mode: matchMode,
+            wait: 'true',
+            useLLM: 'true',
+            useLLMExplanation: 'true',
+            explainRejected: 'true',
+          },
+        });
       } else if (activeMode === 'dia') {
         response = await api.get('/analysis/daily', {
           params: { date, limit, maxCandidates: Math.max(7, Number(limit) + 2), mode: matchMode },
@@ -460,8 +479,8 @@ const Analises = () => {
           <div className={styles.fields}>
             {activeMode === 'equipes' ? (
               <>
-                <label><span>Time mandante</span><input value={home} onChange={(event) => setHome(event.target.value)} placeholder="Turquia" /></label>
-                <label><span>Time visitante</span><input value={away} onChange={(event) => setAway(event.target.value)} placeholder="Estados Unidos" /></label>
+                <label><span>Time mandante</span><input value={home} onChange={(event) => setHome(event.target.value)} placeholder="Mandante" /></label>
+                <label><span>Time visitante</span><input value={away} onChange={(event) => setAway(event.target.value)} placeholder="Visitante" /></label>
               </>
             ) : null}
 
@@ -472,11 +491,11 @@ const Analises = () => {
             <label><span>{activeMode === 'dia' ? 'Data dos jogos' : 'Data da partida ou início'}</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
 
             {['dia', 'campeonato'].includes(activeMode) ? (
-              <label><span>Quantidade</span><select value={limit} onChange={(event) => setLimit(event.target.value)}><option value="3">3 jogos</option><option value="5">5 jogos</option><option value="8">8 jogos</option></select></label>
+              <label><span>Quantidade</span><select value={limit} onChange={(event) => setLimit(event.target.value)}><option value="3">3 jogos</option></select></label>
             ) : null}
 
             {activeMode === 'campeonato' ? (
-              <label><span>Buscar por</span><select value={daysAhead} onChange={(event) => setDaysAhead(event.target.value)}><option value="0">Somente no dia</option><option value="2">3 dias</option><option value="6">7 dias</option><option value="13">14 dias</option></select></label>
+              <label><span>Buscar por</span><select value={daysAhead} onChange={(event) => setDaysAhead(event.target.value)}><option value="0">Somente no dia</option></select></label>
             ) : null}
 
             <div className={styles.modeField}>
