@@ -222,6 +222,36 @@
   min-width: 0;
 }
 
+.teamWithLogo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.teamLogo,
+.teamLogoFallback {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+}
+
+.teamLogo {
+  object-fit: contain;
+  padding: 3px;
+}
+
+.teamLogoFallback {
+  display: grid;
+  place-items: center;
+  color: #0c8d4d;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
 .versus {
   font-size: 0.8rem;
   font-weight: 700;

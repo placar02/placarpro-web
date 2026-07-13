@@ -34,6 +34,38 @@ const formatMatchDate = (timestamp) => {
   });
 };
 
+const cleanProviderText = (value, fallback = '') => {
+  const sanitized = String(value || '')
+    .replace(/\bogol\b/gi, '')
+    .replace(/\bdesconhecido\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return sanitized || fallback;
+};
+
+const teamInitials = (name) => cleanProviderText(name, 'Time')
+  .split(/\s+/)
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0])
+  .join('')
+  .toUpperCase();
+
+const TeamWithLogo = ({ name, imageUrl, fallback }) => {
+  const cleanName = cleanProviderText(name, fallback);
+
+  return (
+    <span className={styles.teamWithLogo}>
+      {imageUrl ? (
+        <img src={imageUrl} alt="" className={styles.teamLogo} loading="lazy" />
+      ) : (
+        <span className={styles.teamLogoFallback}>{teamInitials(cleanName)}</span>
+      )}
+      <span className={styles.teamName}>{cleanName}</span>
+    </span>
+  );
+};
+
 const getMatchMeta = (entry) => {
   const statusType = String(entry.status?.type || '').toLowerCase();
   const isLive = ['inprogress', 'live'].includes(statusType);
@@ -123,6 +155,7 @@ const AnalysisDetails = ({ entry }) => {
   if (!hasAdvancedAnalysis(entry)) return null;
 
   const analysis = entry.advancedAnalysis || {};
+  const isPreviewOnly = String(entry.market || '').toLowerCase() === 'previa' && !entry.odd;
   const playerMain = asList(analysis.playerAnalysis?.mainPlayers);
   const unsupportedPlayerMarkets = asList(analysis.playerAnalysis?.unsupportedPlayerMarkets);
   const marketFacts = renderTextMap(analysis.marketBreakdown);
@@ -134,11 +167,11 @@ const AnalysisDetails = ({ entry }) => {
 
   return (
     <details className={styles.analysisDetails}>
-      <summary>Ver analise completa</summary>
+      <summary>{isPreviewOnly ? 'Ver mais informacoes' : 'Ver analise completa'}</summary>
       <div className={styles.analysisDetailsBody}>
         {entry.fullRationale ? (
           <section className={styles.analysisSection}>
-            <h4>Leitura da entrada</h4>
+            <h4>{isPreviewOnly ? 'Leitura da partida' : 'Leitura da entrada'}</h4>
             <p>{entry.fullRationale}</p>
           </section>
         ) : null}
@@ -431,8 +464,8 @@ const Dashboard = () => {
 
         <Card className={styles.betOfDayCard}>
           <div className={styles.betOfDayHeader}>
-            <h3 className={styles.cardTitle}>{planIsPremium ? 'Entradas Premium' : 'Aposta do dia'}</h3>
-            <span className={`${styles.badge} ${styles.badgeSuccess}`}>{planIsPremium ? 'Odds reais' : 'Odd real'}</span>
+            <h3 className={styles.cardTitle}>{planIsPremium ? 'Entradas Premium' : 'Previa do dia'}</h3>
+            <span className={`${styles.badge} ${styles.badgeSuccess}`}>{planIsPremium ? 'Odds reais' : 'Plano basico'}</span>
           </div>
 
           {entries.length > 0 ? (
@@ -443,53 +476,66 @@ const Dashboard = () => {
                 const odd = getRealOdd(entry);
                 const isLive = ['inprogress', 'live'].includes(String(entry.status?.type || '').toLowerCase());
                 const alreadyPlaced = Boolean(placedEntries[entryKey]);
+                const tournamentName = cleanProviderText(entry.tournamentName);
+                const matchMeta = getMatchMeta(entry);
 
                 return (
                   <div className={styles.entryItem} key={`${entry.eventId}-${entry.market}-${index}`}>
                     <div className={styles.matchHeader}>
                       <div className={styles.teamBlock}>
-                        <span className={styles.teamName}>{entry.homeTeamName}</span>
+                        <TeamWithLogo name={entry.homeTeamName} imageUrl={entry.homeTeamImageUrl} fallback="Casa" />
                         <span className={styles.versus}>vs</span>
-                        <span className={styles.teamName}>{entry.awayTeamName}</span>
+                        <TeamWithLogo name={entry.awayTeamName} imageUrl={entry.awayTeamImageUrl} fallback="Fora" />
                       </div>
                       <span className={`${styles.matchStatus} ${isLive ? styles.liveStatus : ''}`}>
-                        {getMatchMeta(entry)}
+                        {matchMeta}
                       </span>
                     </div>
-                    <div className={styles.betOfDayLeague}>{entry.tournamentName}</div>
-                    <div className={styles.betOfDayOddWrapper}>
-                      <span className={styles.betOfDayOddLabel}>Entrada:</span>
-                      <span className={styles.betOfDayOddValue}>{entry.recommendation}</span>
-                      <span className={styles.marketPill}>{entry.market}</span>
-                      <span className={odd ? styles.oddPill : styles.oddMissing}>
-                        {odd ? `Odd ${odd.toFixed(2)}` : 'Odd indisponivel'}
-                      </span>
-                    </div>
+                    {tournamentName ? <div className={styles.betOfDayLeague}>{tournamentName}</div> : null}
+                    {planIsPremium ? (
+                      <div className={styles.betOfDayOddWrapper}>
+                        <span className={styles.betOfDayOddLabel}>Entrada:</span>
+                        <span className={styles.betOfDayOddValue}>{entry.recommendation}</span>
+                        <span className={styles.marketPill}>{entry.market}</span>
+                        <span className={odd ? styles.oddPill : styles.oddMissing}>
+                          {odd ? `Odd ${odd.toFixed(2)}` : 'Odd indisponivel'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className={styles.betOfDayOddWrapper}>
+                        <span className={styles.betOfDayOddLabel}>Informacoes:</span>
+                        {tournamentName ? <span className={styles.marketPill}>{tournamentName}</span> : null}
+                        {matchMeta ? <span className={styles.marketPill}>{matchMeta}</span> : null}
+                        <span className={styles.marketPill}>Previa sem entrada</span>
+                      </div>
+                    )}
                     <div className={styles.betOfDayAnalysis}>
-                      <strong>Analise da IA ({entry.confidence || 0}% de confianca):</strong>
+                      <strong>{planIsPremium ? `Analise da IA (${entry.confidence || 0}% de confianca):` : 'Pequena analise da partida:'}</strong>
                       <p>{entry.analysisSummary || entry.rationale || 'Analise resumida indisponivel no momento.'}</p>
                     </div>
                     <AnalysisDetails entry={entry} />
-                    <form className={styles.entryForm} onSubmit={(event) => handlePlaceEntry(event, entry, index, gameName, odd)}>
-                      <label className={styles.entryStakeField}>
-                        <span>Valor da entrada</span>
-                        <div>
-                          <strong>R$</strong>
-                          <input
-                            type="number"
-                            min="1"
-                            step="0.01"
-                            disabled={!odd || alreadyPlaced}
-                            value={entryStakes[entryKey] ?? ''}
-                            placeholder={String(Number(data.stake_sugerida || 0).toFixed(2))}
-                            onChange={(event) => setEntryStakes((current) => ({ ...current, [entryKey]: event.target.value }))}
-                          />
-                        </div>
-                      </label>
-                      <Button variant="primary" type="submit" disabled={placingEntry === entryKey || alreadyPlaced || !odd}>
-                        {placingEntry === entryKey ? 'Registrando...' : alreadyPlaced ? 'Registrada' : odd ? 'Registrar entrada' : 'Sem odd real'}
-                      </Button>
-                    </form>
+                    {planIsPremium ? (
+                      <form className={styles.entryForm} onSubmit={(event) => handlePlaceEntry(event, entry, index, gameName, odd)}>
+                        <label className={styles.entryStakeField}>
+                          <span>Valor da entrada</span>
+                          <div>
+                            <strong>R$</strong>
+                            <input
+                              type="number"
+                              min="1"
+                              step="0.01"
+                              disabled={!odd || alreadyPlaced}
+                              value={entryStakes[entryKey] ?? ''}
+                              placeholder={String(Number(data.stake_sugerida || 0).toFixed(2))}
+                              onChange={(event) => setEntryStakes((current) => ({ ...current, [entryKey]: event.target.value }))}
+                            />
+                          </div>
+                        </label>
+                        <Button variant="primary" type="submit" disabled={placingEntry === entryKey || alreadyPlaced || !odd}>
+                          {placingEntry === entryKey ? 'Registrando...' : alreadyPlaced ? 'Registrada' : odd ? 'Registrar entrada' : 'Sem odd real'}
+                        </Button>
+                      </form>
+                    ) : null}
                   </div>
                 );
               })}

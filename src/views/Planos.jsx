@@ -414,8 +414,8 @@ const Planos = () => {
             <span className={styles.period}>/mes</span>
           </div>
           <ul className={styles.featuresList}>
-            <li><Check size={16} className="text-primary" /> 1 aposta diaria da IA</li>
-            <li><Check size={16} className="text-primary" /> Odd limitada a 1.50</li>
+            {/* <li><Check size={16} className="text-primary" /> 1 aposta diaria da IA</li>
+            <li><Check size={16} className="text-primary" /> Odd limitada a 1.50</li> */}
             <li><Check size={16} className="text-primary" /> Dashboard com banca personalizada</li>
             <li className={styles.disabledFeature}><Check size={16} /> Multiplas entradas por jogo</li>
           </ul>

@@ -10,23 +10,11 @@ import styles from '../../views/Home.module.css';
 
 const plans = [
   {
-    name: 'Essencial',
-    price: 'R$ 29',
-    description: 'Para acompanhar analises e sinais principais com uma rotina simples.',
-    features: ['Analises diarias', 'Dashboard principal', 'Historico recente', 'Acesso seguro']
-  },
-  {
-    name: 'Pro',
-    price: 'R$ 59',
-    description: 'Para quem precisa de mais filtros, explicacoes e profundidade estatistica.',
-    features: ['Tudo do Essencial', 'Explicacoes da IA', 'Filtros por campeonato', 'Indicadores avancados'],
+    name: 'Premium Mensal',
+    price: 'R$ 20',
+    description: 'Acesso mensal completo para acompanhar entradas, dashboard e explicacoes da IA.',
+    features: ['Analises completas', 'Entradas premium', 'Explicacoes da IA', 'Dashboard principal'],
     highlighted: true
-  },
-  {
-    name: 'Premium',
-    price: 'R$ 99',
-    description: 'Para uso intensivo, com recursos completos e acompanhamento ampliado.',
-    features: ['Tudo do Pro', 'Dados em tempo real', 'Historico completo', 'Prioridade em atualizacoes']
   }
 ];
 
@@ -36,8 +24,8 @@ const Pricing = () => {
       <div className="container">
         <div className={styles.sectionHeader}>
           <span className={styles.kicker}>Planos</span>
-          <h2>Escolha o nivel de inteligencia ideal para sua rotina.</h2>
-          <p>Planos claros, acesso imediato e foco total em recursos de analise esportiva.</p>
+          <h2>Um unico plano mensal para acessar o PlacarPro.</h2>
+          <p>Acesso imediato aos recursos premium por R$ 20,00 por mes.</p>
         </div>
         <div className={styles.pricingGrid}>
           {plans.map((plan, index) => (
