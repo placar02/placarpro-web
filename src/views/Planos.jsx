@@ -53,6 +53,19 @@ const getMercadoPagoPaymentMethodId = async (mercadoPago, cardNumber) => {
   }
 };
 
+const getMercadoPagoIssuerId = async (mercadoPago, paymentMethodId, cardNumber) => {
+  const bin = cleanDigits(cardNumber).slice(0, 6);
+  if (!mercadoPago?.getIssuers || !paymentMethodId || bin.length < 6) return undefined;
+
+  try {
+    const response = await mercadoPago.getIssuers({ paymentMethodId, bin });
+    const issuers = response?.results || response || [];
+    return issuers?.[0]?.id ? String(issuers[0].id) : undefined;
+  } catch (_err) {
+    return undefined;
+  }
+};
+
 const parseExpiration = (value) => {
   const digits = cleanDigits(value);
   const month = digits.slice(0, 2);
@@ -329,6 +342,8 @@ const Planos = () => {
         throw new Error('Bandeira do cartao nao reconhecida pelo Mercado Pago. Confira o numero informado.');
       }
 
+      const issuerId = await getMercadoPagoIssuerId(mercadoPagoRef.current, paymentMethodId, cardData.cardNumber);
+
       const tokenResponse = await mercadoPagoRef.current.createCardToken({
         cardNumber: cleanDigits(cardData.cardNumber),
         cardholderName: cardData.cardholderName,
@@ -347,6 +362,7 @@ const Planos = () => {
       const res = await api.post('/payments/card', {
         token,
         paymentMethodId,
+        issuerId,
         installments: 1,
         identificationType: cardData.identificationType,
         identificationNumber: cardData.identificationNumber,
