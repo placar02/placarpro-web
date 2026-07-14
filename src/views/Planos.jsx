@@ -37,6 +37,22 @@ const inferPaymentMethodId = (cardNumber) => {
   return '';
 };
 
+const getMercadoPagoPaymentMethodId = async (mercadoPago, cardNumber) => {
+  const digits = cleanDigits(cardNumber);
+  const fallback = inferPaymentMethodId(digits);
+  const bin = digits.slice(0, 6);
+
+  if (!mercadoPago?.getPaymentMethods || bin.length < 6) return fallback;
+
+  try {
+    const response = await mercadoPago.getPaymentMethods({ bin });
+    const methods = response?.results || response || [];
+    return methods?.[0]?.id || fallback;
+  } catch (_err) {
+    return fallback;
+  }
+};
+
 const parseExpiration = (value) => {
   const digits = cleanDigits(value);
   const month = digits.slice(0, 2);
@@ -303,14 +319,14 @@ const Planos = () => {
 
     try {
       const { month, year } = parseExpiration(cardData.expirationDate);
-      const paymentMethodId = inferPaymentMethodId(cardData.cardNumber);
-
-      if (!paymentMethodId) {
-        throw new Error('Bandeira do cartao nao reconhecida. Confira o numero informado.');
-      }
-
       if (!mercadoPagoRef.current?.createCardToken) {
         throw new Error('Mercado Pago nao carregou a tokenizacao do cartao. Atualize a pagina e tente novamente.');
+      }
+
+      const paymentMethodId = await getMercadoPagoPaymentMethodId(mercadoPagoRef.current, cardData.cardNumber);
+
+      if (!paymentMethodId) {
+        throw new Error('Bandeira do cartao nao reconhecida pelo Mercado Pago. Confira o numero informado.');
       }
 
       const tokenResponse = await mercadoPagoRef.current.createCardToken({
