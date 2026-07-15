@@ -393,6 +393,7 @@ const Dashboard = () => {
   const progress = monthlyGoal > 0 ? Math.min(100, Math.round((data.saldo / monthlyGoal) * 100)) : 0;
   const planIsPremium = data.plano === 'premium';
   const entries = planIsPremium && data.entradas_premium?.length ? data.entradas_premium : [data.aposta_do_dia].filter(Boolean);
+  const hasRealOdds = entries.some((entry) => Boolean(getRealOdd(entry)));
 
   return (
     <DashboardLayout>
@@ -465,7 +466,9 @@ const Dashboard = () => {
         <Card className={styles.betOfDayCard}>
           <div className={styles.betOfDayHeader}>
             <h3 className={styles.cardTitle}>{planIsPremium ? 'Entradas Premium' : 'Previa do dia'}</h3>
-            <span className={`${styles.badge} ${styles.badgeSuccess}`}>{planIsPremium ? 'Odds reais' : 'Plano basico'}</span>
+            <span className={`${styles.badge} ${styles.badgeSuccess}`}>
+              {planIsPremium ? (hasRealOdds ? 'Odds reais' : 'Analises Premium') : 'Plano basico'}
+            </span>
           </div>
 
           {entries.length > 0 ? (

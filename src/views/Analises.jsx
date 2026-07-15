@@ -130,6 +130,12 @@ const confidenceTone = (confidence) => {
   return styles.confidenceLow;
 };
 
+const marketLabel = (market) => {
+  const value = String(market || '').trim();
+  if (!value || ['none', 'pending'].includes(value.toLowerCase())) return 'Sem entrada recomendada';
+  return value;
+};
+
 const InsightList = ({ title, items, tone = 'default' }) => {
   const values = asArray(items);
   if (!values.length) return null;
@@ -246,7 +252,7 @@ const AnalysisCard = ({ analysis, index, featured }) => {
       <div className={styles.marketLine}>
         <Target size={18} />
         <span>Mercado</span>
-        <strong>{entry.market || 'Nenhum'}</strong>
+        <strong>{marketLabel(entry.market)}</strong>
       </div>
 
       <div className={styles.rationale}>
@@ -356,7 +362,7 @@ const Analises = () => {
   const [away, setAway] = useState('');
   const [date, setDate] = useState(today());
   const matchMode = 'prelive';
-  const [limit, setLimit] = useState('5');
+  const [limit, setLimit] = useState('3');
   const [tournamentName, setTournamentName] = useState('');
   const [daysAhead, setDaysAhead] = useState('2');
   const [loading, setLoading] = useState(false);
