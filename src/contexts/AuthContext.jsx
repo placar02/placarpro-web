@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 
 export const AuthContext = createContext();
@@ -9,8 +9,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const csrfTokenRef = useRef(null);
   const [settings, setSettings] = useState({ system_name: 'PlacarPro', logo_url: '/placarpro-logo.png' });
 
   const updateSettingsTheme = useCallback((data = {}) => {
@@ -33,21 +33,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const restoreSession = async () => {
-      const savedToken = localStorage.getItem('token');
-      if (!savedToken) {
-        setLoading(false);
-        return;
-      }
-
-      setToken(savedToken);
       try {
         const res = await axios.get(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${savedToken}` },
+          withCredentials: true,
         });
+        csrfTokenRef.current = res.data.csrfToken || null;
         setUser(res.data.user);
       } catch (_err) {
-        localStorage.removeItem('token');
-        setToken(null);
+        csrfTokenRef.current = null;
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -57,50 +51,41 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const api = useMemo(() => {
-    const instance = axios.create({ baseURL: API_URL });
+    const instance = axios.create({ baseURL: API_URL, withCredentials: true });
 
     instance.interceptors.request.use((config) => {
-      const currentToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
-      if (currentToken) {
-        config.headers.Authorization = `Bearer ${currentToken}`;
+      if (csrfTokenRef.current && !['get', 'head', 'options'].includes(String(config.method || '').toLowerCase())) {
+        config.headers['X-CSRF-Token'] = csrfTokenRef.current;
       }
       return config;
     });
 
     return instance;
-  }, [token]);
-
-  useEffect(() => {
-    if (loading) return;
-
-    if (token) {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token');
-      setUser(null);
-    }
-  }, [loading, token]);
+  }, []);
 
   const login = async (email, senha) => {
     const res = await api.post('/auth/login', { email, senha });
-    setToken(res.data.token);
+    csrfTokenRef.current = res.data.csrfToken || null;
     setUser(res.data.user);
   };
 
   const register = async (nome, email, senha) => {
     const res = await api.post('/auth/register', { nome, email, senha });
-    setToken(res.data.token);
+    csrfTokenRef.current = res.data.csrfToken || null;
     setUser(res.data.user);
   };
 
-  const logout = () => {
-    api.post('/auth/logout').catch(() => {});
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } finally {
+      csrfTokenRef.current = null;
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, token, api, login, register, logout, loading, settings, updateSettingsTheme }}>
+    <AuthContext.Provider value={{ user, setUser, authenticated: Boolean(user), api, login, register, logout, loading, settings, updateSettingsTheme }}>
       {children}
     </AuthContext.Provider>
   );
