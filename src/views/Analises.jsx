@@ -10,11 +10,17 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  CircleAlert,
+  CircleDollarSign,
   Clock3,
+  Gauge,
+  Info,
+  MapPin,
   Search,
   ShieldCheck,
   Sparkles,
   Target,
+  TrendingUp,
   Trophy,
   Users,
 } from 'lucide-react';
@@ -136,6 +142,73 @@ const marketLabel = (market) => {
   return value;
 };
 
+const formatKickoff = (timestamp) => {
+  const numeric = Number(timestamp);
+  if (!Number.isFinite(numeric) || numeric <= 0) return { date: 'Data não informada', time: 'Horário não informado' };
+  const date = new Date(numeric < 1e12 ? numeric * 1000 : numeric);
+  return {
+    date: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date),
+    time: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(date),
+  };
+};
+
+const formatOdd = (entry) => {
+  const odd = Number(entry?.odd ?? entry?.meta?.decimal_odds);
+  return Number.isFinite(odd) && odd > 1 ? odd.toFixed(2) : 'Aguardando odd';
+};
+
+const formatExpectedValue = (entry) => {
+  const value = Number(entry?.meta?.expectedValue ?? entry?.expectedValue);
+  if (!Number.isFinite(value)) return 'Aguardando odd';
+  const percentage = Math.abs(value) <= 1 ? value * 100 : value;
+  return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(1)}%`;
+};
+
+const sentence = (value) => {
+  const text = cleanText(value).replace(/\s+/g, ' ');
+  if (!text) return '';
+  const normalized = text
+    .replace(/^over 2\.5:\s*(\d+(?:[.,]\d+)?)%$/i, 'O mercado Over 2.5 ocorreu em $1% da amostra analisada')
+    .replace(/^btts:\s*(\d+(?:[.,]\d+)?)%$/i, 'Ambas as equipes marcaram em $1% da amostra analisada')
+    .replace(/^m[eé]dia ofensiva combinada\s*([\d.,]+)$/i, 'A média ofensiva combinada foi de $1 gol por equipe')
+    .replace(/^m[eé]dia defensiva combinada\s*([\d.,]+)$/i, 'A média combinada de gols sofridos foi de $1 por equipe')
+    .replace(/^m[eé]dia do mandante:\s*([\d.,]+)\s*(.*)$/i, 'O mandante registra média de $1 $2')
+    .replace(/^m[eé]dia do visitante:\s*([\d.,]+)\s*(.*)$/i, 'O visitante registra média de $1 $2')
+    .replace(/^forma geral:\s*([\d.,]+)%?\s*x\s*([\d.,]+)%?$/i, 'A forma recente apresenta comparação de $1% contra $2%')
+    .replace(/^casa\/?fora:\s*([\d.,]+)%?\s*x\s*([\d.,]+)%?$/i, 'O recorte de desempenho como mandante e visitante aponta $1% contra $2%')
+    .replace(/^(\d+(?:[.,]\d+)?)%$/, 'Um dos indicadores considerados atingiu $1% na amostra analisada');
+  const readable = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  return /[.!?]$/.test(readable) ? readable : `${readable}.`;
+};
+
+const uniqueSentences = (...groups) => [...new Set(groups.flatMap(asArray).map((item) => sentence(displayValue(item))).filter(Boolean))];
+
+const marketReason = (analysis, entry, rejected) => {
+  const breakdown = analysis?.marketBreakdown;
+  const values = breakdown && typeof breakdown === 'object' ? Object.values(breakdown) : [];
+  const explanation = values.find((value) => typeof value === 'string' && cleanText(value));
+  if (explanation) return sentence(explanation);
+  if (rejected) return 'Os mercados avaliados não atingiram, ao mesmo tempo, os critérios mínimos de confiança, qualidade dos dados e segurança exigidos pelo PlacarPro.';
+  return `O mercado ${entry.recommendation || marketLabel(entry.market)} apresentou a melhor combinação disponível entre evidência estatística, qualidade dos dados e valor esperado.`;
+};
+
+const PresentationSection = ({ icon: Icon, title, children, tone = 'default' }) => (
+  <section className={`${styles.presentationSection} ${tone === 'warning' ? styles.presentationWarning : ''}`}>
+    <div className={styles.sectionHeading}><Icon size={18} /><h3>{title}</h3></div>
+    {children}
+  </section>
+);
+
+const NarrativeList = ({ items, tone = 'positive' }) => {
+  const values = asArray(items);
+  if (!values.length) return null;
+  return (
+    <ul className={`${styles.narrativeList} ${tone === 'warning' ? styles.narrativeWarning : ''}`}>
+      {values.slice(0, 6).map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}
+    </ul>
+  );
+};
+
 const InsightList = ({ title, items, tone = 'default' }) => {
   const values = asArray(items);
   if (!values.length) return null;
@@ -220,70 +293,99 @@ const AnalysisCard = ({ analysis, index, featured }) => {
   const recommendations = asArray(analysis.recommendations);
   const decisionAudit = analysis.meta?.decisionAudit;
   const rejected = decisionAudit?.decision === 'rejected' || confidence === 0;
+  const waitingOdds = analysis.analysisStatus === 'waiting_odds' || decisionAudit?.decision === 'waiting_odds';
+  const kickoff = formatKickoff(entry.startTimestamp || analysis.startTimestamp);
+  const round = entry.round ?? entry.roundInfo?.round ?? analysis.round ?? analysis.roundInfo?.round;
+  const venueValue = entry.venue ?? analysis.venue;
+  const venue = cleanText(typeof venueValue === 'object' ? venueValue?.name : venueValue);
+  const evidence = uniqueSentences(analysis.keyFactors, entry.dataSupport, analysis.dataSupport);
+  const positivePoints = uniqueSentences(analysis.confidenceDrivers, analysis.keyFactors, entry.dataSupport).slice(0, 5);
+  const attentionPoints = uniqueSentences(entry.warningSigns, analysis.warningSigns, decisionAudit?.missingData?.map((item) => `Cobertura limitada para ${humanize(item).toLowerCase()}`));
+  const risks = attentionPoints.length ? attentionPoints : ['Escalações, contexto pré-jogo e mudanças em relação à amostra histórica podem alterar o cenário esperado.'];
+  const summary = sentence(entry.rationale || analysis.matchAnalysis || (rejected
+    ? 'Os dados disponíveis não sustentaram uma recomendação com segurança suficiente.'
+    : 'A recomendação foi definida a partir dos indicadores objetivos disponíveis para a partida.'));
 
   return (
     <article className={`${styles.resultCard} ${featured && !rejected ? styles.featuredResult : ''} ${rejected ? styles.rejectedResult : ''}`}>
-      <div className={styles.resultHeader}>
-        <div className={styles.resultIdentity}>
-          <div className={styles.resultEyebrow}>
-            {rejected
-              ? <><AlertTriangle size={14} /> Partida rejeitada</>
-              : featured ? <><Sparkles size={14} /> Melhor oportunidade</> : `Analise ${index + 1}`}
+      <header className={styles.professionalHeader}>
+        <div className={styles.headerTopline}>
+          <div className={styles.competition}><Trophy size={17} /><strong>{entry.tournamentName || 'Campeonato não informado'}</strong></div>
+          <div className={`${styles.analysisStatus} ${rejected ? styles.statusRejected : waitingOdds ? styles.statusWaiting : styles.statusApproved}`}>
+            {rejected ? <><AlertTriangle size={14} /> Não recomendada</> : waitingOdds ? <><Clock3 size={14} /> Aguardando odds</> : featured ? <><Sparkles size={14} /> Melhor oportunidade</> : `Análise ${index + 1}`}
           </div>
-          {entry.homeTeam?.name && entry.awayTeam?.name ? (
-            <div className={styles.matchup}>
-              <TeamBadge team={entry.homeTeam} />
-              <span className={styles.versus}>x</span>
-              <TeamBadge team={entry.awayTeam} />
+        </div>
+
+        <div className={styles.fixtureLine}>
+          <div className={styles.fixtureTeams}>
+            <TeamBadge team={entry.homeTeam} />
+            <span className={styles.versus}>x</span>
+            <TeamBadge team={entry.awayTeam} />
+          </div>
+          <div className={styles.fixtureDetails}>
+            <span><CalendarDays size={15} /> {kickoff.date}</span>
+            <span><Clock3 size={15} /> {kickoff.time}</span>
+            {round ? <span><Activity size={15} /> Rodada {round}</span> : null}
+            {venue && !/^unknown$/i.test(venue) ? <span><MapPin size={15} /> {venue}</span> : null}
+          </div>
+        </div>
+
+        <div className={styles.recommendationBand}>
+          <span>Recomendação do PlacarPro</span>
+          <strong>{rejected ? 'Nenhuma entrada recomendada' : entry.recommendation || marketLabel(entry.market)}</strong>
+          <small>{marketLabel(entry.market)}</small>
+        </div>
+
+        <div className={styles.metricsGrid}>
+          <div><Target size={18} /><span>Mercado</span><strong>{marketLabel(entry.market)}</strong></div>
+          <div><CircleDollarSign size={18} /><span>Odd utilizada</span><strong>{formatOdd(entry)}</strong></div>
+          <div><Gauge size={18} /><span>Confiança</span><strong className={confidenceTone(confidence)}>{confidence}%</strong></div>
+          <div><TrendingUp size={18} /><span>Expected Value</span><strong>{formatExpectedValue(entry)}</strong></div>
+          <div><ShieldCheck size={18} /><span>Nível de risco</span><strong>{entry.riskLevel ? humanize(entry.riskLevel) : rejected ? 'Não aplicável' : 'Não classificado'}</strong></div>
+        </div>
+      </header>
+
+      <div className={styles.analysisNarrative}>
+        <PresentationSection icon={BrainCircuit} title="Resumo da IA">
+          <p className={styles.summaryText}>{summary}</p>
+          {analysis.meta?.llmError ? <small className={styles.aiWarning}>A explicação detalhada da IA não ficou disponível nesta consulta: {compactAiError(analysis.meta.llmError)}</small> : null}
+        </PresentationSection>
+
+        <PresentationSection icon={Info} title="Contexto da partida">
+          <p>{sentence(analysis.matchAnalysis || 'O contexto foi avaliado com os dados recentes disponíveis para as duas equipes, considerando mando de campo e características do confronto.')}</p>
+          {(analysis.homeAnalysis || analysis.awayAnalysis) ? (
+            <div className={styles.teamGrid}>
+              <TeamReading title="Mandante" data={analysis.homeAnalysis} />
+              <TeamReading title="Visitante" data={analysis.awayAnalysis} />
             </div>
           ) : null}
-          <h2>{entry.recommendation || 'Sem entrada confiavel'}</h2>
-          <div className={styles.resultMeta}>
-            <span>Evento {entry.eventId || 'nao informado'}</span>
-            {entry.riskLevel ? <span>Risco {entry.riskLevel}</span> : null}
-          </div>
-        </div>
-        <div className={`${styles.confidence} ${confidenceTone(confidence)}`} aria-label={`Confianca ${confidence}%`}>
-          <strong>{confidence}%</strong>
-          <span>confianca</span>
-        </div>
-      </div>
+        </PresentationSection>
 
-      <div className={styles.marketLine}>
-        <Target size={18} />
-        <span>Mercado</span>
-        <strong>{marketLabel(entry.market)}</strong>
-      </div>
+        <PresentationSection icon={CheckCircle2} title="Principais evidências">
+          <NarrativeList items={evidence.length ? evidence : ['Os indicadores disponíveis foram cruzados antes da recomendação final.']} />
+        </PresentationSection>
 
-      <div className={styles.rationale}>
-        <BrainCircuit size={20} />
-        <div>
-          <strong>Leitura da IA</strong>
-          <p>{entry.rationale || analysis.matchAnalysis || 'A IA nao encontrou sustentacao suficiente nos dados disponiveis.'}</p>
-          {analysis.meta?.llmError ? (
-            <small className={styles.aiWarning}>IA indisponivel nesta consulta: {compactAiError(analysis.meta.llmError)}</small>
-          ) : null}
+        <PresentationSection icon={Target} title="Por que esse mercado?">
+          <p>{marketReason(analysis, entry, rejected)}</p>
+        </PresentationSection>
+
+        <div className={styles.balanceGrid}>
+          <PresentationSection icon={TrendingUp} title="Pontos positivos">
+            <NarrativeList items={positivePoints.length ? positivePoints : evidence.length ? evidence.slice(0, 3) : ['A decisão foi submetida aos filtros de qualidade e confiança do PlacarPro.']} />
+          </PresentationSection>
+          <PresentationSection icon={CircleAlert} title="Pontos de atenção" tone="warning">
+            <NarrativeList items={risks} tone="warning" />
+            {analysis.riskAnalysis ? <p className={styles.riskSummary}>{sentence(analysis.riskAnalysis)}</p> : null}
+          </PresentationSection>
         </div>
       </div>
 
-      <details className={styles.details} open={featured}>
+      <details className={styles.details}>
         <summary>
-          <span>Analise completa</span>
+          <span>Ver dados complementares</span>
           <ChevronDown size={18} />
         </summary>
         <div className={styles.detailsBody}>
-          {analysis.matchAnalysis ? (
-            <section className={styles.textSection}>
-              <h3>Contexto da partida</h3>
-              <p>{analysis.matchAnalysis}</p>
-            </section>
-          ) : null}
-
-          <div className={styles.teamGrid}>
-            <TeamReading title="Mandante" data={analysis.homeAnalysis} />
-            <TeamReading title="Visitante" data={analysis.awayAnalysis} />
-          </div>
-
           {analysis.marketBreakdown ? (
             <section className={styles.dataSection}>
               <h3>Leitura por mercado</h3>
@@ -318,18 +420,11 @@ const AnalysisCard = ({ analysis, index, featured }) => {
             <section className={styles.dataSection}>
               <h3>Auditoria da decisao</h3>
               <Facts data={{
-                decisao: decisionAudit.decision === 'approved' ? 'aprovada' : 'rejeitada',
+                decisao: decisionAudit.decision === 'approved' ? 'aprovada' : decisionAudit.decision === 'waiting_odds' ? 'aguardando odds' : 'rejeitada',
                 qualidadeDosDados: `${Number(decisionAudit.dataQuality || 0)}/100`,
                 confiancaMinima: `${Number(decisionAudit.threshold || 0)}%`,
                 dadosAusentes: asArray(decisionAudit.missingData),
               }} />
-            </section>
-          ) : null}
-
-          {analysis.riskAnalysis ? (
-            <section className={styles.textSection}>
-              <h3>Risco da entrada</h3>
-              <p>{analysis.riskAnalysis}</p>
             </section>
           ) : null}
 
