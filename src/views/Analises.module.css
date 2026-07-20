@@ -650,7 +650,7 @@
 
 .metricsGrid {
   display: grid;
-  grid-template-columns: 1.2fr repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr));
   margin-top: 18px;
   border: 1px solid #e3e8e5;
   background: #fafcfb;
@@ -739,9 +739,10 @@
 @media (max-width: 1050px) {
   .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .factsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .metricsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .metricsGrid > div:nth-child(3) { border-right: 0; }
-  .metricsGrid > div:nth-child(-n+3) { border-bottom: 1px solid #e3e8e5; }
+  .metricsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metricsGrid > div:nth-child(odd) { border-right: 1px solid #e3e8e5; }
+  .metricsGrid > div:nth-child(even) { border-right: 0; }
+  .metricsGrid > div:nth-child(-n+2) { border-bottom: 1px solid #e3e8e5; }
 }
 
 @media (max-width: 760px) {
@@ -791,10 +792,6 @@
   .fixtureTeams .teamBadge > strong { max-width: 120px; font-size: 0.85rem; }
   .recommendationBand { grid-template-columns: 1fr; }
   .recommendationBand small { grid-row: auto; grid-column: 1; margin-top: 5px; }
-  .metricsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .metricsGrid > div, .metricsGrid > div:nth-child(3) { border-right: 1px solid #e3e8e5; border-bottom: 1px solid #e3e8e5; }
-  .metricsGrid > div:nth-child(even) { border-right: 0; }
-  .metricsGrid > div:last-child { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
 }
 
 .resultCard { border-radius: 8px; }

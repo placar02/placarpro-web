@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleAlert,
-  CircleDollarSign,
   Clock3,
   Gauge,
   Info,
@@ -150,11 +149,6 @@ const formatKickoff = (timestamp) => {
     date: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date),
     time: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(date),
   };
-};
-
-const formatOdd = (entry) => {
-  const odd = Number(entry?.odd ?? entry?.meta?.decimal_odds);
-  return Number.isFinite(odd) && odd > 1 ? odd.toFixed(2) : 'Aguardando odd';
 };
 
 const formatExpectedValue = (entry) => {
@@ -338,7 +332,6 @@ const AnalysisCard = ({ analysis, index, featured }) => {
 
         <div className={styles.metricsGrid}>
           <div><Target size={18} /><span>Mercado</span><strong>{marketLabel(entry.market)}</strong></div>
-          <div><CircleDollarSign size={18} /><span>Odd utilizada</span><strong>{formatOdd(entry)}</strong></div>
           <div><Gauge size={18} /><span>Confiança</span><strong className={confidenceTone(confidence)}>{confidence}%</strong></div>
           <div><TrendingUp size={18} /><span>Expected Value</span><strong>{formatExpectedValue(entry)}</strong></div>
           <div><ShieldCheck size={18} /><span>Nível de risco</span><strong>{entry.riskLevel ? humanize(entry.riskLevel) : rejected ? 'Não aplicável' : 'Não classificado'}</strong></div>
