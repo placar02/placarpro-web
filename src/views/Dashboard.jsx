@@ -116,6 +116,26 @@ const renderBulletList = (items) => {
   );
 };
 
+const readableFactor = (item) => {
+  if (!item) return '';
+  if (typeof item === 'string') return item.trim();
+  return String(item.reason || item.label || item.market || item.description || item.value || '').trim();
+};
+
+const getPreviewFactors = (entry) => {
+  const analysis = entry?.advancedAnalysis || {};
+  const factors = [
+    ...asList(analysis.keyFactors),
+    ...asList(analysis.confidenceDrivers),
+    ...asList(analysis.dataSupport),
+  ]
+    .map(readableFactor)
+    .filter(Boolean)
+    .filter((item) => !isUnavailableText(item));
+
+  return [...new Set(factors)].slice(0, 3);
+};
+
 const normalizeText = (value) => String(value || '')
   .toLowerCase()
   .normalize('NFD')
@@ -481,6 +501,7 @@ const Dashboard = () => {
                 const alreadyPlaced = Boolean(placedEntries[entryKey]);
                 const tournamentName = cleanProviderText(entry.tournamentName);
                 const matchMeta = getMatchMeta(entry);
+                const previewFactors = !planIsPremium ? getPreviewFactors(entry) : [];
 
                 return (
                   <div className={styles.entryItem} key={`${entry.eventId}-${entry.market}-${index}`}>
@@ -509,12 +530,21 @@ const Dashboard = () => {
                         <span className={styles.betOfDayOddLabel}>Informacoes:</span>
                         {tournamentName ? <span className={styles.marketPill}>{tournamentName}</span> : null}
                         {matchMeta ? <span className={styles.marketPill}>{matchMeta}</span> : null}
-                        <span className={styles.marketPill}>Previa sem entrada</span>
                       </div>
                     )}
                     <div className={styles.betOfDayAnalysis}>
                       <strong>{planIsPremium ? `Analise da IA (${entry.confidence || 0}% de confianca):` : 'Pequena analise da partida:'}</strong>
                       <p>{entry.analysisSummary || entry.rationale || 'Analise resumida indisponivel no momento.'}</p>
+                      {previewFactors.length ? (
+                        <div className={styles.previewFactors}>
+                          <span>Fatores principais:</span>
+                          <ul>
+                            {previewFactors.map((factor, factorIndex) => (
+                              <li key={`${factor}-${factorIndex}`}>{factor}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </div>
                     <AnalysisDetails entry={entry} />
                     {planIsPremium ? (

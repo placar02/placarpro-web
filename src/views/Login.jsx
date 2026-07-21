@@ -56,9 +56,9 @@ const Login = () => {
               <input type="password" id="senha" placeholder="Sua senha secreta" value={senha} onChange={(e) => setSenha(e.target.value)} required />
             </div>
             
-            {/* <div style={{ textAlign: 'right' }}>
-              <a href="#" className={styles.loginLink} style={{ fontSize: '0.85rem' }}>Esqueceu sua senha?</a>
-            </div> */}
+            <div style={{ textAlign: 'right' }}>
+              <Link href="/recuperar-senha" className={styles.loginLink} style={{ fontSize: '0.85rem' }}>Esqueceu sua senha?</Link>
+            </div>
             
             <Button variant="primary" className={styles.submitBtn} type="submit" style={{ width: '100%' }}>Entrar</Button>
           </form>

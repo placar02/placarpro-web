@@ -1,6 +1,5 @@
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
-import SecurityShield from '@/components/SecurityShield';
 
 export const metadata = {
   title: 'Placar Pro',
@@ -12,7 +11,6 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <AuthProvider>
-          <SecurityShield />
           {children}
         </AuthProvider>
       </body>

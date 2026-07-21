@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '../layouts/DashboardLayout';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { User, Lock, Mail } from 'lucide-react';
+import { User, Mail } from 'lucide-react';
 import styles from './Perfil.module.css';
 import { AuthContext } from '../contexts/AuthContext';
 
@@ -13,8 +13,8 @@ const Perfil = () => {
   const { user, logout } = React.useContext(AuthContext);
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
   return (
@@ -38,7 +38,7 @@ const Perfil = () => {
         <form className={styles.form}>
           <div className={styles.inputGroup}>
             <label><User size={16} /> Nome Completo</label>
-            <input type="text" defaultValue={user?.nome} />
+            <input type="text" value={user?.nome || ''} readOnly aria-readonly="true" />
           </div>
 
           <div className={styles.inputGroup}>

@@ -6,7 +6,7 @@
     "dev": "next dev -p 5175",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint src --max-warnings=0"
   },
   "dependencies": {
     "axios": "^1.16.1",
@@ -17,7 +17,13 @@
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1"
   },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^15.5.19"
+  },
   "overrides": {
+    "form-data": "^4.0.6",
     "postcss": "^8.5.10"
   }
 }
